@@ -10,16 +10,16 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="使用系统控件的困境
+<meta name="description" content="## 使用系统控件的困境
 如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。">
 <meta property="og:title" content="关于导航栏与导航控制器">
-<meta property="og:description" content="使用系统控件的困境
+<meta property="og:description" content="## 使用系统控件的困境
 如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://seasonZhu.github.io/post/guan-yu-dao-hang-lan-yu-dao-hang-kong-zhi-qi.html">
 <meta property="og:image" content="https://avatars.githubusercontent.com/u/19945063?v=4">
 <title>关于导航栏与导航控制器</title>
-
+<link href="//unpkg.com/@wooorm/starry-night@2.1.1/style/both.css" rel="stylesheet" />
 
 
 </head>
@@ -85,373 +85,400 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 </div>
 </div>
     <div id="content">
-<div class="markdown-body" id="postBody"><p>使用系统控件的困境<br>
-如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。<br>
-但是iOS却不同，你会发现NavigationController更像一个全局的单例，每个页面的NavigationControlle都是一个样的。<br>
-而往往业务侧对导航栏的需求又是多样的，渐变、一屏到顶、Web页面全屏接管等等，都会让你在导航栏的配置上焦头烂额，效果达不到也就算了，甚至会引出bug。<br>
-而通过隐藏系统导航栏，全部自己写自定义导航栏的时候，NavigationController又会阴魂不散，时不时给你一点意外惊喜。<br>
-我这里没有特别多的好策略，就是给出一个我喜欢用的库——RTRootNavigationController。<br>
-这里，我先给出完全使用系统UINavigationController的方案，这个方案在RxStudy上面已经实践过，其中push时的假死bug也是网友斧正帮我解决的。这个项目中，完全使用系统导航栏，只用自定义leftBarButtonItem就可以了。<br>
-但是需要注意的是，这个思路只适合架构简单，没有太多自定义需求的项目。<br>
-class BaseViewController: UIViewController {</p>
-<pre class="notranslate"><code class="notranslate">override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
-    super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
-}
-
-required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-}
-
-override func viewDidLoad() {
-    super.viewDidLoad()
+<div class="markdown-body" id="postBody"><h2>使用系统控件的困境</h2>
+<p>如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。</p>
+<p>但是iOS却不同，你会发现NavigationController更像一个全局的单例，每个页面的NavigationControlle都是一个样的。</p>
+<p>而往往业务侧对导航栏的需求又是多样的，渐变、一屏到顶、Web页面全屏接管等等，都会让你在导航栏的配置上焦头烂额，效果达不到也就算了，甚至会引出bug。</p>
+<p>而通过隐藏系统导航栏，全部自己写自定义导航栏的时候，NavigationController又会阴魂不散，时不时给你一点意外惊喜。</p>
+<p>我这里没有特别多的好策略，就是给出一个我喜欢用的库——RTRootNavigationController。</p>
+<p>这里，我先给出完全使用系统UINavigationController的方案，这个方案在RxStudy上面已经实践过，其中push时的假死bug也是网友斧正帮我解决的。这个项目中，完全使用系统导航栏，只用自定义leftBarButtonItem就可以了。</p>
+<p><strong>但是需要注意的是，这个思路只适合架构简单，没有太多自定义需求的项目。</strong></p>
+<div class="highlight highlight-source-dart"><pre class="notranslate"><span class="pl-k">class</span> <span class="pl-c1">BaseViewController</span><span class="pl-k">:</span> <span class="pl-c1">UIViewController</span> {
     
-    /// 最简单的设置统一返回按钮的方法,所有的控制器继承该基类即可
-    let leftBarButtonItem = UIBarButtonItem(image: R.image.back(), style: .plain, target: self, action: #selector(leftBarButtonItemAction(_:)))
-    navigationItem.leftBarButtonItem = (navigationController?.viewControllers.count ?? 0) &gt; 1 ? leftBarButtonItem : nil
-    navigationItem.hidesBackButton = true
-}
- 
-/// 将此方法从private改成对外暴露,让子类能有能力重新这个返回的方法,一般情况这个返回的方法会与侧滑返回的逻辑绑定,比如MyJueJinController就是例子
-/// - Parameter item: UIBarButtonItem
-@objc
-func leftBarButtonItemAction(_ item: UIBarButtonItem) {
-    navigationController?.popViewController(animated: true)
-}
-</code></pre>
-<p>}<br>
-class BaseNavigationController: UINavigationController {</p>
-<pre class="notranslate"><code class="notranslate">override func viewDidLoad() {
-    super.viewDidLoad()
-    interactivePopGestureRecognizer?.delegate = self
-    delegate = self
-}
-</code></pre>
-<p>}</p>
-<p>extension BaseNavigationController: UIGestureRecognizerDelegate, UINavigationControllerDelegate {<br>
-func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {<br>
-interactivePopGestureRecognizer?.isEnabled = true<br>
-/// 解决某些情况下push时的假死bug，防止把根控制器pop掉<br>
-if navigationController.viewControllers.count == 1 {<br>
-interactivePopGestureRecognizer?.isEnabled = false<br>
-}<br>
-}<br>
-}<br>
-谁包裹谁？<br>
-再来就是有关于RTNavigationController，其中的包裹方案有以下几种：<br>
-● 方案一：使用 RTRootNavigationController 包裹整个 UITabBarController，适用于需要全局统一管理导航控制器的情况。这种方案的优点是结构简单，适合需要全局统一管理导航控制器的情况。缺点是每个选项卡中的视图控制器共享同一个导航控制器，可能会导致导航堆栈管理复杂。</p>
-<p>● 方案二：使用 RTRootNavigationController 包裹每个 UIViewController，然后用 UITabBarController 包裹这些 RTRootNavigationController，适用于需要独立管理每个选项卡中的导航堆栈的情况。这种方案的优点是每个选项卡中的视图控制器都有独立的导航控制器，导航堆栈管理更清晰。缺点是结构稍微复杂一些。</p>
-<p>其实这种结构不仅适用于RTRootNavigationController，其实对于原生UINavigationController也一样适用，我一般使用方案二。<br>
-我个人的理解是，每一个Tab包含的都是一种相关的业务，独立为每一种tab业务用一个Navigation进行管理比较合适，这样就算是路由业务，也能更好的解耦。<br>
-RTRootNavigationController的基本使用<br>
-页面包裹相关的思路其实和使用UINavigationController一致，这里就不再展开，说一些需要注意的<br>
-● 页面隐藏导航栏<br>
-class ExampleController: UIViewController {<br>
-override func viewDidLoad() {<br>
-super.viewDidLoad()<br>
-setupUI()<br>
-}</p>
-<pre class="notranslate"><code class="notranslate">private func setupUI() {
-    /// 隐藏导航栏 返回手势可用
-    navigationController?.isNavigationBarHidden = true
-    /// 注意使用RT，一定要把这个API设置，并设置为false，否则页面无法侧滑
-    rt_disableInteractivePop = false
-}
-</code></pre>
-<p>}<br>
-RT默认当页面导航栏隐藏时，系统的侧滑失效，于是这里rt_disableInteractivePop必须手动设置一下。<br>
-RT相关逻辑代码如下：</p>
-<ul>
-<li>
-<p>(void)viewDidLayoutSubviews<br>
-{<br>
-[super viewDidLayoutSubviews];</p>
-<p>UIViewController *viewController = self.topViewController;<br>
-if (!viewController.rt_hasSetInteractivePop) {<br>
-BOOL hasSetLeftItem = viewController.navigationItem.leftBarButtonItem != nil;<br>
-if (self.navigationBarHidden) {<br>
-viewController.rt_disableInteractivePop = YES;<br>
-} else if (hasSetLeftItem) {<br>
-viewController.rt_disableInteractivePop = YES;<br>
-} else {<br>
-viewController.rt_disableInteractivePop = NO;<br>
-}</p>
-<p>}<br>
-if ([self.parentViewController isKindOfClass:[RTContainerController class]] &amp;&amp;<br>
-[self.parentViewController.parentViewController isKindOfClass:[RTRootNavigationController class]]) {<br>
-[self.rt_navigationController _installsLeftBarButtonItemIfNeededForViewController:viewController];<br>
-}<br>
-}</p>
-</li>
-<li>
-<p>(void)setNavigationBarHidden:(BOOL)hidden animated:(BOOL)animated<br>
-{<br>
-[super setNavigationBarHidden:hidden animated:animated];<br>
-if (!self.visibleViewController.rt_hasSetInteractivePop) {<br>
-self.visibleViewController.rt_disableInteractivePop = hidden;<br>
-}<br>
-}<br>
-● 页面查找：<br>
-我们看一下一个被RTNavigationController包裹的页面层级：</p>
-</li>
-</ul>
-<p>/// 切换到发现页面的社区页面<br>
-if let rt = Tools.currentVC()?.tabBarController?.viewControllers?.first as? RTRootNavigationController,<br>
-let containerController = rt.topViewController as? RTContainerController,<br>
-let viewController = containerController.contentViewController as? UIViewController {<br>
-}<br>
-我们需要拿到RTContainerController，接着拿到RTContainerController里面的contentViewController属性获取真正我们构建的控制器，而使用UINavigationController，在topViewController我们就可以直接转我们构建的控制器了。<br>
-push与pop有完成回调：</p>
-<ul>
-<li>
-<p>(void)pushViewController:(UIViewController *)viewController<br>
-animated:(BOOL)animated<br>
-complete:(void(^)(BOOL finished))block;</p>
-</li>
-<li>
-<p>(UIViewController *)popViewControllerAnimated:(BOOL)animated complete:(void(^)(BOOL finished))block;<br>
-但使用rt_navigationController时，可以使用这个改造后的push与pop，它能更好的控制push与pop之后的控制。<br>
-删除栈<br>
-通过remove可以删除指定的栈内的控制器，特别是当push到某一个页面之后，需要对栈做优化，值得注意的是，使用RT的API会比系统的舒适一点，比如下面这个例子就是push完成后，将当前的页面给删除掉：<br>
-self.rt_navigationController?.pushViewController(ChangePhoneController(type: .bindNewPhone), animated: true, complete: { _ in<br>
-self.rt_navigationController.removeViewController(self)<br>
-})<br>
-当然这里使用通过对象删除栈内的方式，并不通用，因为有的时候我们无法拿到栈内的对象，于是通过控制器名称等标签的查找与删除，更符合使用，下面是我封装的一个方法：<br>
-// MARK: - 这两个方法是基于RTRootNavigationController的封装<br>
-extension BaseViewController {</p>
-<p>/// push到目标控制器,并通过类名进行定向移除导航控制器中的栈内控制器<br>
-/// - Parameters:<br>
-///   - viewController: 目标控制器<br>
-///   - animated: 是否有动画效果<br>
-///   - removeViewControllerClassNameList: 需要移除控制器名称的数组<br>
-///   - isRemoveSelf: 是否移除触发push方法的当前控制器<br>
-func pushViewController(_ viewController: UIViewController, animated: Bool, removeViewControllerClassNameList: [String] = [], isRemoveSelf: Bool = true) {<br>
-rt_navigationController?.pushViewController(viewController, animated: animated) { [weak self] _ in<br>
-guard let self else { return }</p>
-<pre class="notranslate"><code class="notranslate">      if let viewControllers = self.navigationController?.viewControllers {
-          for vc in viewControllers where removeViewControllerClassNameList.contains(vc.className) {
-              self.rt_navigationController?.removeViewController(vc)
-          }
-      }
-      
-      if isRemoveSelf {
-          self.rt_navigationController?.removeViewController(self)
-      }
-  }
-</code></pre>
-<p>}</p>
-<p>/// 用于通过类名进行定向pop<br>
-/// - Parameters:<br>
-///   - className: pop回退到的控制器名称<br>
-///   - animated: 是否有动画效果<br>
-///   - completion: pop完成后的回调<br>
-func popToViewController(className: String, animated: Bool, completion: ((Bool) -&gt; Void)? = nil) {</p>
-<pre class="notranslate"><code class="notranslate">  var isPoped = false
-  
-  for vc in self.navigationController?.viewControllers ?? [] where vc.className == className {
-      rt_navigationController.pop(to: vc, animated: animated, complete: completion)
-      isPoped = true
-      break
-  }
-  
-  if !isPoped {
-      navigationController?.popViewController(animated: true)
-  }
-</code></pre>
-<p>}<br>
-}<br>
-这里的className可以认为是NSStringForClass的一种封装，简单而言就是通过类名去识别栈内是否有符合控制器实例，当然这个方法还是有一个缺陷，就是如果栈内有2个或者2个以上同名的控制器实例如何解决？<br>
-方法还是有的，只是没有封装到这个方法中，我们在构建控制器的时候，可以给控制器打tag，通过区分tag就可以更好的进行颗粒度细致的控制，这里就讲到这里，扩展我想大家都会了。<br>
-禁止侧滑，点击返回按钮的逻辑需要自定义：<br>
-如果看RT的官方Demo，在页面中自定义返回按钮的代码，就是下面这种：</p>
-</li>
-<li>
-<p>(UIBarButtonItem *)rt_customBackItemWithTarget:(id)target action:(SEL)action<br>
-{<br>
-UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];<br>
-[button setImage:[UIImage imageNamed:@"back"] forState:UIControlStateNormal];<br>
-[button sizeToFit];<br>
-[button addTarget:target<br>
-action:action<br>
-forControlEvents:UIControlEventTouchUpInside];<br>
-return [[UIBarButtonItem alloc] initWithCustomView:button];<br>
-}</p>
-</li>
-</ul>
-<p>这里的action直接调用了super的action，如果在当前页面传一个自己写的方法，那么一定会抛出崩溃出来，堆栈信息如下：<br>
-*** Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: '-[DCZLApp.BaseNavigationController backAction]: unrecognized selector sent to instance 0x109490000'<br>
-你会发现，没有找到这个方法，为什么？我们可以跟踪到rt_customBackItemWithTarget在RT框架中的实现：</p>
-<ul>
-<li>(void)_installsLeftBarButtonItemIfNeededForViewController:(UIViewController *)viewController<br>
-{<br>
-BOOL isRootVC = viewController == RTSafeUnwrapViewController(self.viewControllers.firstObject);<br>
-BOOL hasSetLeftItem = viewController.navigationItem.leftBarButtonItem != nil;<br>
-if (!isRootVC &amp;&amp; !self.useSystemBackBarButtonItem &amp;&amp; !hasSetLeftItem) {<br>
-if ([viewController respondsToSelector:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(rt_customBackItemWithTarget:action:)]) {<br>
-viewController.navigationItem.leftBarButtonItem = [viewController rt_customBackItemWithTarget:self<br>
-action:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(onBack:)];<br>
-}<br>
-else if ([viewController respondsToSelector:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(customBackItemWithTarget:action:)]) {<br>
-#pragma clang diagnostic push<br>
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"<br>
-viewController.navigationItem.leftBarButtonItem = [viewController customBackItemWithTarget:self<br>
-action:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(onBack:)];<br>
-#pragma clang diagnostic pop<br>
-}<br>
-else {<br>
-viewController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Back", nil)<br>
-style:UIBarButtonItemStylePlain<br>
-target:self<br>
-action:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(onBack:)];<br>
-}<br>
-}<br>
-}<br>
-它最后回去调用RTRootNavigationController中的onBack方法，如果我们想要在控制器中重写action，那么可以有两个实现思路：<br>
-● 在RTRootNavigationController中新增分类，添加自定义方法，并在当前页面进行调用实现<br>
-● 重写RTRootNavigationController中的onBack方法<br>
-我们先看第一个思路：<br>
-extension BaseViewController {<br>
-override func rt_customBackItem(withTarget target: Any!, action: Selector!) -&gt; UIBarButtonItem! {<br>
-let button = ExtendTouchButton()<br>
-button.frame = CGRect(x: 0, y: 0, width: 44, height: 44)<br>
-button.addTarget(target, action: #selector(self.rt_navigationController.backAction), for: .touchUpInside)<br>
-button.contentHorizontalAlignment = .left<br>
-button.setImage(UIImage(named: R.image.dczl_back_black_icon.name), for: .normal)<br>
-return UIBarButtonItem(customView: button)<br>
-}<br>
-}</li>
-</ul>
-<p>extension RTRootNavigationController {<br>
-<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/objc/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/objc">@objc</a> func backAction() {<br>
-print("我是新写的RTRootNavigationController里面的backAction")<br>
-popToRootViewController(animated: true)<br>
-}<br>
-}<br>
-执行如下:</p>
-<p>这种思路是可行的，也就是说针对不同的页面与页面逻辑，我们只需要写实现一个RTRootNavigationController分类来处理即可。<br>
-第二种方案：<br>
-import UIKit<br>
-import RTRootNavigationController</p>
-<p>class BaseNavigationController: RTRootNavigationController {</p>
-<pre class="notranslate"><code class="notranslate">var onBackCallback: (() -&gt; Void)?
-
-@objc
-override func onBack(_ sender: Any) {
-    if 伪代码,有什么条件 {
-        onBackCallback?()
-    } else {
-        super.onBack(sender)
+    override <span class="pl-en">init</span>(nibName nibNameOrNil<span class="pl-k">:</span> <span class="pl-c1">String</span><span class="pl-k">?</span>, bundle nibBundleOrNil<span class="pl-k">:</span> <span class="pl-c1">Bundle</span><span class="pl-k">?</span>) {
+        <span class="pl-c1">super</span>.<span class="pl-en">init</span>(nibName<span class="pl-k">:</span> nibNameOrNil, bundle<span class="pl-k">:</span> nibBundleOrNil)
     }
+    
+    <span class="pl-k">required</span> <span class="pl-en">init</span>?(coder<span class="pl-k">:</span> <span class="pl-c1">NSCoder</span>) {
+        <span class="pl-en">fatalError</span>(<span class="pl-s">"init(coder:) has not been implemented"</span>)
+    }
+    
+    override func <span class="pl-en">viewDidLoad</span>() {
+        <span class="pl-c1">super</span>.<span class="pl-en">viewDidLoad</span>()
+        
+        <span class="pl-c">/// 最简单的设置统一返回按钮的方法,所有的控制器继承该基类即可</span>
+<span class="pl-c"></span>        let leftBarButtonItem <span class="pl-k">=</span> <span class="pl-c1">UIBarButtonItem</span>(image<span class="pl-k">:</span> <span class="pl-c1">R</span>.image.<span class="pl-en">back</span>(), style<span class="pl-k">:</span> .plain, target<span class="pl-k">:</span> self, action<span class="pl-k">:</span> #<span class="pl-en">selector</span>(<span class="pl-en">leftBarButtonItemAction</span>(_<span class="pl-k">:</span>)))
+        navigationItem.leftBarButtonItem <span class="pl-k">=</span> (navigationController<span class="pl-k">?</span>.viewControllers.count <span class="pl-k">??</span> <span class="pl-c1">0</span>) <span class="pl-k">&gt;</span> <span class="pl-c1">1</span> <span class="pl-k">?</span> leftBarButtonItem <span class="pl-k">:</span> nil
+        navigationItem.hidesBackButton <span class="pl-k">=</span> <span class="pl-c1">true</span>
+    }
+     
+    <span class="pl-c">/// 将此方法从private改成对外暴露,让子类能有能力重新这个返回的方法,一般情况这个返回的方法会与侧滑返回的逻辑绑定,比如MyJueJinController就是例子</span>
+<span class="pl-c">    /// - Parameter item: UIBarButtonItem</span>
+<span class="pl-c"></span>    <span class="pl-k">@objc</span>
+    func <span class="pl-en">leftBarButtonItemAction</span>(_ item<span class="pl-k">:</span> <span class="pl-c1">UIBarButtonItem</span>) {
+        navigationController<span class="pl-k">?</span>.<span class="pl-en">popViewController</span>(animated<span class="pl-k">:</span> <span class="pl-c1">true</span>)
+    }
+}</pre></div>
+<div class="highlight highlight-source-dart"><pre class="notranslate"><span class="pl-k">class</span> <span class="pl-c1">BaseNavigationController</span><span class="pl-k">:</span> <span class="pl-c1">UINavigationController</span> {
+
+    override func <span class="pl-en">viewDidLoad</span>() {
+        <span class="pl-c1">super</span>.<span class="pl-en">viewDidLoad</span>()
+        interactivePopGestureRecognizer<span class="pl-k">?</span>.delegate <span class="pl-k">=</span> self
+        delegate <span class="pl-k">=</span> self
+    }
+
 }
-</code></pre>
-<p>}</p>
-<p>/// 看了OC RTRootNavigationController的源码,onBack其实在.m文件中,没有声明在.h中<br>
-/// 这里添加分类的同时,其实相当于将RTRootNavigationController的onBack方法给重写了<br>
-/// 如果在OC中写,其实就是为RTRootNavigationController创建分类,并在分类的.h将此方法<br>
-extension RTRootNavigationController {<br>
-<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/objc/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/objc">@objc</a><br>
-func onBack(_ sender: Any) {<br>
-popViewController(animated: true)<br>
-}<br>
-}<br>
-我们的重点是onBack方法的重写，OC中RTRootNavigationController的源码，onBack其实在.m文件中,没有声明在.h中，这里添加分类的同时，其实相当于将RTRootNavigationController的onBack方法暴露出来了，如果在OC中写,其实就是为RTRootNavigationController创建分类,并在分类的.h将此方法。<br>
-接着我们通过继承RTRootNavigationController的方式，可以对onBack方法进行重写，通过条件拦截，比如BaseNavigationController里面的当前控制器是哪一个控制，我们就怎么怎么样，亦或者自己定义一个onBackCallback属性去做属性回调即可：</p>
-<p>注意的是onBackCallback是全局存在与RTRootNavigationController中的，不同的业务页面可能会对onBackCallback做不同的实现，可能导致的问题就是onBackCallback不断被复写而达不到预期效果，可以考虑onBackCallback实现完成后置为nil，后续有使用再实现。<br>
-方案一，直接在是RTRootNavigationController的分类中进行新增方法从而改变action方法，适合于返回事件与当前页面没什么耦合的情况，在新的方法中处理逻辑即可；<br>
-方案二，因为可以将回调实现写在当前页面中，所以对于那种业务逻辑比较复杂的情况，使用方案二会比较好一点，当然使用方法二的成本也会高一点，需要对RT框架做对外暴露改造，继承RTRootNavigationController，以及对应的逻辑修改。<br>
-当然也有更简单的方法，就是直接更改RT代码，我这里写了一个分类，以减少对代码的入侵：<br>
-#import &lt;RTRootNavigationController/RTRootNavigationController.h&gt;</p>
-<p>NS_ASSUME_NONNULL_BEGIN</p>
-<p>typedef void (^OnBackCallback)(void);</p>
-<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/interface/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/interface">@interface</a> RTRootNavigationController (OnBack)</p>
-<p><a class="user-mention notranslate" data-hovercard-type="organization" data-hovercard-url="/orgs/Property/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/Property">@Property</a> (nonatomic, copy) OnBackCallback onBackCallback;</p>
-<ul>
-<li>(void)onBack:(id)sender;</li>
-</ul>
-<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/EnD/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/EnD">@EnD</a></p>
-<p>NS_ASSUME_NONNULL_END<br>
-#import &lt;objc/runtime.h&gt;</p>
-<p>#import "RTRootNavigationController+OnBack.h"</p>
-<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/implementation/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/implementation">@implementation</a> RTRootNavigationController (OnBack)</p>
-<p>// 关联对象的key<br>
-static void *OnBackCallbackKey = &amp;OnBackCallbackKey;</p>
-<p>// 闭包属性的getter方法</p>
-<ul>
-<li>(OnBackCallback)onBackCallback {<br>
-return objc_getAssociatedObject(self, OnBackCallbackKey);<br>
-}</li>
-</ul>
-<p>// 闭包属性的setter方法</p>
-<ul>
-<li>
-<p>(void)setOnBackCallback:(OnBackCallback)onBackCallback {<br>
-objc_setAssociatedObject(self, OnBackCallbackKey, onBackCallback, OBJC_ASSOCIATION_COPY_NONATOMIC);<br>
-}</p>
-</li>
-<li>
-<p>(void)onBack:(id)sender<br>
-{<br>
-if (self.onBackCallback) {<br>
-self.onBackCallback();<br>
-} else {<br>
-[self popViewControllerAnimated:YES];<br>
-}<br>
-}</p>
-</li>
-</ul>
-<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/EnD/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/EnD">@EnD</a><br>
-以前在使用RT框架的过程中，遇到这种禁掉侧滑，返回按钮需要自定义的时候，只能直接将系统导航栏都隐藏了，去写一个高保真的系统导航来完成功能，通过以上思路，可以让代码与逻辑更加简单。<br>
-包含WebView页面的返回上一页，侧滑返回上一页，返回pop与侧滑pop：<br>
-其实可以认为第4点其实就是对于第3点扩充与应用。<br>
-在因为iOS里面WebView点击跳转，我们可以认为是在同一个WebView不停的做Web内部的路由，而这种路由动画就“好像”push，于是什么时候是返回Web的上一个路由还是返回上一个控制器，就成为了判断的关键。可能文字说不明白，直接上个动图:</p>
-<p>因为自己的开发过程中使用了Rx，所以代码逻辑如下：<br>
-(rt_navigationController as? BaseNavigationController)?.onBackCallback = { [weak self] in<br>
-if self?.webView.canGoBack == true {<br>
-self?.webView.goBack()<br>
-} else {<br>
-self?.navigationController?.popViewController(animated: true)<br>
-}<br>
-}</p>
-<pre class="notranslate"><code class="notranslate">    /// iOS 如何让WKWebView侧滑返回时html逐级返回，而不是直接返回到上级控制器?
-    /// https://www.imooc.com/article/26158
-    webView.rx.observeWeakly(Bool.self, "canGoBack")
-        .subscribe(onNext: { [weak self] newValue in
-            print("新的值: \(newValue)")
-            
-            if let canGoBack = newValue {
-                self?.rt_disableInteractivePop = canGoBack
-            }
-        })
-        .disposed(by: rx.disposeBag)
-</code></pre>
-<p>如果不使用Rx与RT，可以参考下面这段代码：<br>
-private let canGoBackKeyPath = "canGoBack"</p>
-<p>webView.addObserver(self, forKeyPath: canGoBackKeyPath, options: .new, context: nil)</p>
-<p>open override func observeValue(forKeyPath keyPath: String?,<br>
-of object: Any?,<br>
-change: [NSKeyValueChangeKey: Any]?,<br>
-context: UnsafeMutableRawPointer?) {<br>
-guard let theKeyPath = keyPath, object as? WKWebView == webView else {<br>
-super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)<br>
-return<br>
-}</p>
-<pre class="notranslate"><code class="notranslate">if theKeyPath == canGoBackKeyPath{
-    if let newValue = change?[NSKeyValueChangeKey.newKey]{
-        let newV = newValue as! Bool
-        if newV == true {
-            self.navigationController?.interactivePopGestureRecognizer?.isEnabled = false;
-        }else{
-            self.navigationController?.interactivePopGestureRecognizer?.isEnabled = true;
+
+<span class="pl-k">extension</span> <span class="pl-c1">BaseNavigationController</span><span class="pl-k">:</span> <span class="pl-c1">UIGestureRecognizerDelegate</span>, <span class="pl-c1">UINavigationControllerDelegate</span> {
+    func <span class="pl-en">navigationController</span>(_ navigationController<span class="pl-k">:</span> <span class="pl-c1">UINavigationController</span>, didShow viewController<span class="pl-k">:</span> <span class="pl-c1">UIViewController</span>, animated<span class="pl-k">:</span> <span class="pl-c1">Bool</span>) {
+        interactivePopGestureRecognizer<span class="pl-k">?</span>.isEnabled <span class="pl-k">=</span> <span class="pl-c1">true</span>
+        <span class="pl-c">/// 解决某些情况下push时的假死bug，防止把根控制器pop掉</span>
+<span class="pl-c"></span>        <span class="pl-k">if</span> navigationController.viewControllers.count <span class="pl-k">==</span> <span class="pl-c1">1</span> {
+            interactivePopGestureRecognizer<span class="pl-k">?</span>.isEnabled <span class="pl-k">=</span> <span class="pl-c1">false</span>
         }
     }
+}</pre></div>
+<h2>谁包裹谁？</h2>
+<p>再来就是有关于RTNavigationController，其中的包裹方案有以下几种：</p>
+<ul>
+<li>方案一：使用 RTRootNavigationController 包裹整个 UITabBarController，适用于需要全局统一管理导航控制器的情况。这种方案的优点是结构简单，适合需要全局统一管理导航控制器的情况。缺点是每个选项卡中的视图控制器共享同一个导航控制器，可能会导致导航堆栈管理复杂。</li>
+</ul>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/3f5dbc515a9fe7cfabca1b3c745d81a7663afdcb25e713f8b42d33adb4e8c170/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6a7065672f313333333833312f313734323139393433333233352d38643066383331322d383161652d343264392d623262362d6534323831333037656462392e6a706567"><img src="https://camo.githubusercontent.com/3f5dbc515a9fe7cfabca1b3c745d81a7663afdcb25e713f8b42d33adb4e8c170/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6a7065672f313333333833312f313734323139393433333233352d38643066383331322d383161652d343264392d623262362d6534323831333037656462392e6a706567" alt="画板" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/jpeg/1333831/1742199433235-8d0f8312-81ae-42d9-b2b6-e4281307edb9.jpeg" style="max-width: 100%;"></a></p>
+<ul>
+<li>方案二：使用 RTRootNavigationController 包裹每个 UIViewController，然后用 UITabBarController 包裹这些 RTRootNavigationController，适用于需要独立管理每个选项卡中的导航堆栈的情况。这种方案的优点是每个选项卡中的视图控制器都有独立的导航控制器，导航堆栈管理更清晰。缺点是结构稍微复杂一些。</li>
+</ul>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/cc267965dade49acb0b5e3fbb64eef6808e16397b513214c226802613b691312/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6a7065672f313333333833312f313734323230303337313330362d64323830633466642d333937392d343662332d386265352d3133393164643632386662312e6a706567"><img src="https://camo.githubusercontent.com/cc267965dade49acb0b5e3fbb64eef6808e16397b513214c226802613b691312/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6a7065672f313333333833312f313734323230303337313330362d64323830633466642d333937392d343662332d386265352d3133393164643632386662312e6a706567" alt="画板" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/jpeg/1333831/1742200371306-d280c4fd-3979-46b3-8be5-1391dd628fb1.jpeg" style="max-width: 100%;"></a></p>
+<p>其实这种结构不仅适用于RTRootNavigationController，其实对于原生UINavigationController也一样适用，我一般使用方案二。</p>
+<p>我个人的理解是，每一个Tab包含的都是一种相关的业务，独立为每一种tab业务用一个Navigation进行管理比较合适，这样就算是路由业务，也能更好的解耦。</p>
+<h2>RTRootNavigationController的基本使用</h2>
+<p>页面包裹相关的思路其实和使用UINavigationController一致，这里就不再展开，说一些需要注意的</p>
+<ul>
+<li>页面隐藏导航栏</li>
+</ul>
+<div class="highlight highlight-source-dart"><pre class="notranslate"><span class="pl-k">class</span> <span class="pl-c1">ExampleController</span><span class="pl-k">:</span> <span class="pl-c1">UIViewController</span> {
+    override func <span class="pl-en">viewDidLoad</span>() {
+        <span class="pl-c1">super</span>.<span class="pl-en">viewDidLoad</span>()
+        <span class="pl-en">setupUI</span>()
+    }
+
+    private func <span class="pl-en">setupUI</span>() {
+        <span class="pl-c">/// 隐藏导航栏 返回手势可用</span>
+<span class="pl-c"></span>        navigationController<span class="pl-k">?</span>.isNavigationBarHidden <span class="pl-k">=</span> <span class="pl-c1">true</span>
+        <span class="pl-c">/// 注意使用RT，一定要把这个API设置，并设置为false，否则页面无法侧滑</span>
+<span class="pl-c"></span>        rt_disableInteractivePop <span class="pl-k">=</span> <span class="pl-c1">false</span>
+    }
+}</pre></div>
+<p>RT默认当页面导航栏隐藏时，系统的侧滑失效，于是这里rt_disableInteractivePop必须手动设置一下。</p>
+<p>RT相关逻辑代码如下：</p>
+<div class="highlight highlight-source-dart"><pre class="notranslate"><span class="pl-k">-</span> (<span class="pl-k">void</span>)viewDidLayoutSubviews
+{
+    [<span class="pl-c1">super</span> viewDidLayoutSubviews];
+    
+    <span class="pl-c1">UIViewController</span> <span class="pl-k">*</span>viewController <span class="pl-k">=</span> self.topViewController;
+    <span class="pl-k">if</span> (<span class="pl-k">!</span>viewController.rt_hasSetInteractivePop) {
+        <span class="pl-c1">BOOL</span> hasSetLeftItem <span class="pl-k">=</span> viewController.navigationItem.leftBarButtonItem <span class="pl-k">!=</span> nil;
+        <span class="pl-k">if</span> (self.navigationBarHidden) {
+            viewController.rt_disableInteractivePop <span class="pl-k">=</span> <span class="pl-c1">YES</span>;
+        } <span class="pl-k">else</span> <span class="pl-k">if</span> (hasSetLeftItem) {
+            viewController.rt_disableInteractivePop <span class="pl-k">=</span> <span class="pl-c1">YES</span>;
+        } <span class="pl-k">else</span> {
+            viewController.rt_disableInteractivePop <span class="pl-k">=</span> <span class="pl-c1">NO</span>;
+        }
+        
+    }
+    <span class="pl-k">if</span> ([self.parentViewController isKindOfClass<span class="pl-k">:</span>[<span class="pl-c1">RTContainerController</span> <span class="pl-k">class</span>]] <span class="pl-k">&amp;&amp;</span>
+        [self.parentViewController.parentViewController isKindOfClass<span class="pl-k">:</span>[<span class="pl-c1">RTRootNavigationController</span> <span class="pl-k">class</span>]]) {
+        [self.rt_navigationController _installsLeftBarButtonItemIfNeededForViewController<span class="pl-k">:</span>viewController];
+    }
 }
-</code></pre>
-<p>}</p>
-<p>deinit {<br>
-webView.removeObserver(self, forKeyPath: canGoBackKeyPath, context: nil)<br>
-}<br>
-整体的逻辑就是通过监听WebView的canGoBack属性，将其值与侧滑使能绑定，自定义重写的返回按钮事件，也与canGoBack做逻辑判断，canGoBack为true，就做WebView的返回上一页，canGoBack为false，就返回上一页。<br>
-总结<br>
-最近因为看TheRoute的源码，里面没有push跳转的过程中删除栈的功能，于是我想到了RTRootNavigationController，它是我个人用的比较多的一个库，在它原有的基础功能上，我结合自己使用过程中的业务场景与问题做了总结，希望可以帮助到大家。</p></div>
+
+<span class="pl-k">-</span> (<span class="pl-k">void</span>)setNavigationBarHidden<span class="pl-k">:</span>(<span class="pl-c1">BOOL</span>)hidden animated<span class="pl-k">:</span>(<span class="pl-c1">BOOL</span>)animated
+{
+    [<span class="pl-c1">super</span> setNavigationBarHidden<span class="pl-k">:</span>hidden animated<span class="pl-k">:</span>animated];
+    <span class="pl-k">if</span> (<span class="pl-k">!</span>self.visibleViewController.rt_hasSetInteractivePop) {
+        self.visibleViewController.rt_disableInteractivePop <span class="pl-k">=</span> hidden;
+    }
+}</pre></div>
+<ul>
+<li>页面查找：</li>
+</ul>
+<p>我们看一下一个被RTNavigationController包裹的页面层级：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/bb02d4ae8c0a8346c429d7a82920c58e04f0e58609d42c8aabfcf252c20a6fdd/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323230313933383934342d39323465386534332d323164662d346633302d386237612d6536663236396237393432662e706e67"><img src="https://camo.githubusercontent.com/bb02d4ae8c0a8346c429d7a82920c58e04f0e58609d42c8aabfcf252c20a6fdd/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323230313933383934342d39323465386534332d323164662d346633302d386237612d6536663236396237393432662e706e67" alt="" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/png/1333831/1742201938944-924e8e43-21df-4f30-8b7a-e6f269b7942f.png" style="max-width: 100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/fe999126633c7cdfc5c2df934d3d37e8fc1a0c5691cc44a62202dd92b5327d0d/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6a7065672f313333333833312f313734323230323232313230342d35343531656132322d663930342d343666652d393737652d3066323766636261376439652e6a706567"><img src="https://camo.githubusercontent.com/fe999126633c7cdfc5c2df934d3d37e8fc1a0c5691cc44a62202dd92b5327d0d/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6a7065672f313333333833312f313734323230323232313230342d35343531656132322d663930342d343666652d393737652d3066323766636261376439652e6a706567" alt="画板" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/jpeg/1333831/1742202221204-5451ea22-f904-46fe-977e-0f27fcba7d9e.jpeg" style="max-width: 100%;"></a></p>
+<div class="highlight highlight-source-swift"><pre class="notranslate">/// 切换到发现页面的社区页面
+<span class="pl-k">if</span> <span class="pl-k">let</span> rt <span class="pl-c1">=</span> <span class="pl-smi">Tools</span><span class="pl-kos">.</span><span class="pl-en">currentVC</span><span class="pl-kos">(</span><span class="pl-kos">)</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>tabBarController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>viewControllers<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>first <span class="pl-k">as?</span> <span class="pl-smi">RTRootNavigationController</span><span class="pl-kos">,</span>
+   <span class="pl-k">let</span> containerController <span class="pl-c1">=</span> rt<span class="pl-kos">.</span>topViewController <span class="pl-k">as?</span> <span class="pl-smi">RTContainerController</span><span class="pl-kos">,</span>
+   <span class="pl-k">let</span> viewController <span class="pl-c1">=</span> containerController<span class="pl-kos">.</span>contentViewController <span class="pl-k">as?</span> <span class="pl-smi">UIViewController</span> <span class="pl-kos">{</span>
+<span class="pl-kos">}</span></pre></div>
+<p><strong>我们需要拿到RTContainerController，接着拿到RTContainerController里面的contentViewController属性获取真正我们构建的控制器，而使用UINavigationController，在topViewController我们就可以直接转我们构建的控制器了。</strong></p>
+<h4>push与pop有完成回调：</h4>
+<div class="highlight highlight-source-objc"><pre class="notranslate">- (<span class="pl-k">void</span>)pushViewController:(UIViewController *)viewController
+                  animated:(<span class="pl-c1">BOOL</span>)animated
+                  complete:(<span class="pl-k">void</span>(^)(<span class="pl-c1">BOOL</span> finished))block;
+
+- (UIViewController *)popViewControllerAnimated:(<span class="pl-c1">BOOL</span>)animated complete:(<span class="pl-k">void</span>(^)(<span class="pl-c1">BOOL</span> finished))block;</pre></div>
+<p>但使用rt_navigationController时，可以使用这个改造后的push与pop，它能更好的控制push与pop之后的控制。</p>
+<h4>删除栈</h4>
+<p>通过remove可以删除指定的栈内的控制器，特别是当push到某一个页面之后，需要对栈做优化，值得注意的是，使用RT的API会比系统的舒适一点，比如下面这个例子就是push完成后，将当前的页面给删除掉：</p>
+<div class="highlight highlight-source-swift"><pre class="notranslate"><span class="pl-smi">self</span><span class="pl-kos">.</span>rt_navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span><span class="pl-en">pushViewController</span><span class="pl-kos">(</span><span class="pl-en">ChangePhoneController</span><span class="pl-kos">(</span>type<span class="pl-kos">:</span> <span class="pl-kos">.</span>bindNewPhone<span class="pl-kos">)</span><span class="pl-kos">,</span> animated<span class="pl-kos">:</span> <span class="pl-c1">true</span><span class="pl-kos">,</span> complete<span class="pl-kos">:</span> <span class="pl-kos">{</span> _ <span class="pl-k">in</span>
+    <span class="pl-smi">self</span><span class="pl-kos">.</span>rt_navigationController<span class="pl-kos">.</span><span class="pl-en">removeViewController</span><span class="pl-kos">(</span><span class="pl-smi">self</span><span class="pl-kos">)</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span></pre></div>
+<p>当然这里使用通过对象删除栈内的方式，并不通用，因为有的时候我们无法拿到栈内的对象，于是通过控制器名称等标签的查找与删除，更符合使用，下面是我封装的一个方法：</p>
+<div class="highlight highlight-source-swift"><pre class="notranslate">// MARK: - 这两个方法是基于RTRootNavigationController的封装
+<span class="pl-k">extension</span> <span class="pl-smi">BaseViewController</span> <span class="pl-kos">{</span>
+    
+    /// push到目标控制器,并通过类名进行定向移除导航控制器中的栈内控制器
+    /// - Parameters:
+    ///   - viewController: 目标控制器
+    ///   - animated: 是否有动画效果
+    ///   - removeViewControllerClassNameList: 需要移除控制器名称的数组
+    ///   - isRemoveSelf: 是否移除触发push方法的当前控制器
+    <span class="pl-en">func</span> pushViewController<span class="pl-kos">(</span>_ viewController<span class="pl-kos">:</span> <span class="pl-smi">UIViewController</span><span class="pl-kos">,</span> animated<span class="pl-kos">:</span> <span class="pl-smi">Bool</span><span class="pl-kos">,</span> removeViewControllerClassNameList<span class="pl-kos">:</span> <span class="pl-kos">[</span><span class="pl-smi">String</span><span class="pl-kos">]</span> <span class="pl-c1">=</span> <span class="pl-kos">[</span><span class="pl-kos">]</span><span class="pl-kos">,</span> isRemoveSelf<span class="pl-kos">:</span> <span class="pl-smi">Bool</span> <span class="pl-c1">=</span> <span class="pl-c1">true</span><span class="pl-kos">)</span> <span class="pl-kos">{</span>
+        rt_navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span><span class="pl-en">pushViewController</span><span class="pl-kos">(</span>viewController<span class="pl-kos">,</span> animated<span class="pl-kos">:</span> animated<span class="pl-kos">)</span> <span class="pl-kos">{</span> <span class="pl-kos">[</span>weak self<span class="pl-kos">]</span> _ <span class="pl-k">in</span>
+            <span class="pl-k">guard</span> <span class="pl-k">let</span> self <span class="pl-k">else</span> <span class="pl-kos">{</span> <span class="pl-k">return</span> <span class="pl-kos">}</span>
+            
+            <span class="pl-k">if</span> <span class="pl-k">let</span> viewControllers <span class="pl-c1">=</span> <span class="pl-smi">self</span><span class="pl-kos">.</span>navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>viewControllers <span class="pl-kos">{</span>
+                <span class="pl-k">for</span> <span class="pl-s1">vc</span> <span class="pl-k">in</span> viewControllers <span class="pl-k">where</span> removeViewControllerClassNameList<span class="pl-kos">.</span><span class="pl-en">contains</span><span class="pl-kos">(</span>vc<span class="pl-kos">.</span>className<span class="pl-kos">)</span> <span class="pl-kos">{</span>
+                    <span class="pl-smi">self</span><span class="pl-kos">.</span>rt_navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span><span class="pl-en">removeViewController</span><span class="pl-kos">(</span>vc<span class="pl-kos">)</span>
+                <span class="pl-kos">}</span>
+            <span class="pl-kos">}</span>
+            
+            <span class="pl-k">if</span> isRemoveSelf <span class="pl-kos">{</span>
+                <span class="pl-smi">self</span><span class="pl-kos">.</span>rt_navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span><span class="pl-en">removeViewController</span><span class="pl-kos">(</span><span class="pl-smi">self</span><span class="pl-kos">)</span>
+            <span class="pl-kos">}</span>
+        <span class="pl-kos">}</span>
+    <span class="pl-kos">}</span>
+    
+    /// 用于通过类名进行定向pop
+    /// - Parameters:
+    ///   - className: pop回退到的控制器名称
+    ///   - animated: 是否有动画效果
+    ///   - completion: pop完成后的回调
+    <span class="pl-en">func</span> popToViewController<span class="pl-kos">(</span>className<span class="pl-kos">:</span> <span class="pl-smi">String</span><span class="pl-kos">,</span> animated<span class="pl-kos">:</span> <span class="pl-smi">Bool</span><span class="pl-kos">,</span> completion<span class="pl-kos">:</span> <span class="pl-kos">(</span><span class="pl-kos">(</span><span class="pl-smi">Bool</span><span class="pl-kos">)</span> <span class="pl-c1">-&gt;</span> <span class="pl-smi">Void</span><span class="pl-kos">)</span><span class="pl-c1"><span class="pl-c1">?</span></span> <span class="pl-c1">=</span> <span class="pl-smi">nil</span><span class="pl-kos">)</span> <span class="pl-kos">{</span>
+        
+        <span class="pl-k">var</span> <span class="pl-s1">isPoped</span> <span class="pl-c1">=</span> <span class="pl-c1">false</span>
+        
+        <span class="pl-k">for</span> <span class="pl-s1">vc</span> <span class="pl-k">in</span> <span class="pl-smi">self</span><span class="pl-kos">.</span>navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>viewControllers <span class="pl-c1">??</span> <span class="pl-kos">[</span><span class="pl-kos">]</span> <span class="pl-k">where</span> vc<span class="pl-kos">.</span>className <span class="pl-c1">==</span> className <span class="pl-kos">{</span>
+            rt_navigationController<span class="pl-kos">.</span><span class="pl-en">pop</span><span class="pl-kos">(</span>to<span class="pl-kos">:</span> vc<span class="pl-kos">,</span> animated<span class="pl-kos">:</span> animated<span class="pl-kos">,</span> complete<span class="pl-kos">:</span> completion<span class="pl-kos">)</span>
+            isPoped <span class="pl-c1">=</span> <span class="pl-c1">true</span>
+            <span class="pl-k">break</span>
+        <span class="pl-kos">}</span>
+        
+        <span class="pl-k">if</span> !isPoped <span class="pl-kos">{</span>
+            navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span><span class="pl-en">popViewController</span><span class="pl-kos">(</span>animated<span class="pl-kos">:</span> <span class="pl-c1">true</span><span class="pl-kos">)</span>
+        <span class="pl-kos">}</span>
+    <span class="pl-kos">}</span>
+<span class="pl-kos">}</span></pre></div>
+<p>这里的className可以认为是NSStringForClass的一种封装，简单而言就是通过类名去识别栈内是否有符合控制器实例，当然这个方法还是有一个缺陷，就是如果栈内有2个或者2个以上同名的控制器实例如何解决？</p>
+<p>方法还是有的，只是没有封装到这个方法中，我们在构建控制器的时候，可以给控制器打**tag，**通过区分tag就可以更好的进行颗粒度细致的控制，这里就讲到这里，扩展我想大家都会了。</p>
+<h4>禁止侧滑，点击返回按钮的逻辑需要自定义：</h4>
+<p>如果看RT的官方Demo，在页面中自定义返回按钮的代码，就是下面这种：</p>
+<div class="highlight highlight-source-objc"><pre class="notranslate">- (UIBarButtonItem *)rt_customBackItemWithTarget:(<span class="pl-c1">id</span>)target action:(<span class="pl-c1">SEL</span>)action
+{
+    UIButton *button = [UIButton <span class="pl-c1">buttonWithType:</span>UIButtonTypeCustom];
+    [button <span class="pl-c1">setImage:</span>[UIImage <span class="pl-c1">imageNamed:</span><span class="pl-s"><span class="pl-pds">@"</span>back<span class="pl-pds">"</span></span>] <span class="pl-c1">forState:</span>UIControlStateNormal];
+    [button <span class="pl-c1">sizeToFit</span>];
+    [button <span class="pl-c1">addTarget:</span>target
+     <span class="pl-c1">action:</span>action
+     <span class="pl-c1">forControlEvents:</span>UIControlEventTouchUpInside];
+    <span class="pl-k">return</span> [[UIBarButtonItem <span class="pl-c1">alloc</span>] <span class="pl-c1">initWithCustomView:</span>button];
+}
+</pre></div>
+<p>这里的<strong>action</strong>直接调用了super的action，如果在当前页面传一个自己写的方法，那么一定会抛出崩溃出来，堆栈信息如下：</p>
+<blockquote>
+<p>*** Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: '-[DCZLApp.BaseNavigationController backAction]: unrecognized selector sent to instance 0x109490000'</p>
+</blockquote>
+<p>你会发现，没有找到这个方法，为什么？我们可以跟踪到rt_customBackItemWithTarget在RT框架中的实现：</p>
+<div class="highlight highlight-source-objc"><pre class="notranslate">- (<span class="pl-k">void</span>)_installsLeftBarButtonItemIfNeededForViewController:(UIViewController *)viewController
+{
+    <span class="pl-c1">BOOL</span> isRootVC = viewController == <span class="pl-c1">RTSafeUnwrapViewController</span>(self.<span class="pl-smi">viewControllers</span>.<span class="pl-smi">firstObject</span>);
+    <span class="pl-c1">BOOL</span> hasSetLeftItem = viewController.<span class="pl-smi">navigationItem</span>.<span class="pl-smi">leftBarButtonItem</span> != <span class="pl-c1">nil</span>;
+    <span class="pl-k">if</span> (!isRootVC &amp;&amp; !self.<span class="pl-smi">useSystemBackBarButtonItem</span> &amp;&amp; !hasSetLeftItem) {
+        <span class="pl-k">if</span> ([viewController <span class="pl-c1">respondsToSelector:</span><span class="pl-k">@selector</span>(<span class="pl-c1">rt_customBackItemWithTarget:action:</span>)]) {
+            viewController.<span class="pl-smi">navigationItem</span>.<span class="pl-smi">leftBarButtonItem</span> = [viewController <span class="pl-c1">rt_customBackItemWithTarget:</span><span class="pl-c1">self</span>
+                                                               <span class="pl-c1">action:</span><span class="pl-k">@selector</span>(<span class="pl-c1">onBack:</span>)];
+        }
+        <span class="pl-k">else</span> <span class="pl-k">if</span> ([viewController <span class="pl-c1">respondsToSelector:</span><span class="pl-k">@selector</span>(<span class="pl-c1">customBackItemWithTarget:action:</span>)]) {
+            #<span class="pl-k">pragma</span> clang diagnostic push
+            #<span class="pl-k">pragma</span> clang diagnostic ignored "-Wdeprecated-declarations"
+            viewController.<span class="pl-smi">navigationItem</span>.<span class="pl-smi">leftBarButtonItem</span> = [viewController <span class="pl-c1">customBackItemWithTarget:</span><span class="pl-c1">self</span>
+                                                               <span class="pl-c1">action:</span><span class="pl-k">@selector</span>(<span class="pl-c1">onBack:</span>)];
+            #<span class="pl-k">pragma</span> clang diagnostic pop
+        }
+        <span class="pl-k">else</span> {
+            viewController.<span class="pl-smi">navigationItem</span>.<span class="pl-smi">leftBarButtonItem</span> = [[UIBarButtonItem <span class="pl-c1">alloc</span>] <span class="pl-c1">initWithTitle:</span>NSLocalizedString(<span class="pl-s"><span class="pl-pds">@"</span>Back<span class="pl-pds">"</span></span>, <span class="pl-c1">nil</span>)
+                                                               <span class="pl-c1">style:</span>UIBarButtonItemStylePlain
+                                                               <span class="pl-c1">target:</span><span class="pl-c1">self</span>
+                                                               <span class="pl-c1">action:</span><span class="pl-k">@selector</span>(<span class="pl-c1">onBack:</span>)];
+        }
+    }
+}</pre></div>
+<p>它最后回去调用RTRootNavigationController中的onBack方法，如果我们想要在控制器中重写action，那么可以有两个实现思路：</p>
+<ul>
+<li>在RTRootNavigationController中新增分类，添加自定义方法，并在当前页面进行调用实现</li>
+<li>重写RTRootNavigationController中的onBack方法</li>
+</ul>
+<p>我们先看第一个思路：</p>
+<div class="highlight highlight-source-swift"><pre class="notranslate"><span class="pl-k">extension</span> <span class="pl-smi">BaseViewController</span> <span class="pl-kos">{</span>
+    <span class="pl-k"><span class="pl-k">override</span></span> <span class="pl-en">func</span> rt_customBackItem<span class="pl-kos">(</span>withTarget target<span class="pl-kos">:</span> <span class="pl-smi">Any</span><span class="pl-c1">!</span><span class="pl-kos">,</span> action<span class="pl-kos">:</span> <span class="pl-smi">Selector</span><span class="pl-c1">!</span><span class="pl-kos">)</span> <span class="pl-c1">-&gt;</span> <span class="pl-smi">UIBarButtonItem</span><span class="pl-c1">!</span> <span class="pl-kos">{</span>
+        <span class="pl-k">let</span> <span class="pl-s1">button</span> <span class="pl-c1">=</span> <span class="pl-en">ExtendTouchButton</span><span class="pl-kos">(</span><span class="pl-kos">)</span>
+        button<span class="pl-kos">.</span>frame <span class="pl-c1">=</span> <span class="pl-en">CGRect</span><span class="pl-kos">(</span>x<span class="pl-kos">:</span> <span class="pl-c1">0</span><span class="pl-kos">,</span> y<span class="pl-kos">:</span> <span class="pl-c1">0</span><span class="pl-kos">,</span> width<span class="pl-kos">:</span> <span class="pl-c1">44</span><span class="pl-kos">,</span> height<span class="pl-kos">:</span> <span class="pl-c1">44</span><span class="pl-kos">)</span>
+        button<span class="pl-kos">.</span><span class="pl-en">addTarget</span><span class="pl-kos">(</span>target<span class="pl-kos">,</span> action<span class="pl-kos">:</span> #selector<span class="pl-kos">(</span><span class="pl-smi">self</span><span class="pl-kos">.</span>rt_navigationController<span class="pl-kos">.</span>backAction<span class="pl-kos">)</span><span class="pl-kos">,</span> for<span class="pl-kos">:</span> <span class="pl-kos">.</span>touchUpInside<span class="pl-kos">)</span>
+        button<span class="pl-kos">.</span>contentHorizontalAlignment <span class="pl-c1">=</span> <span class="pl-kos">.</span>left
+        button<span class="pl-kos">.</span><span class="pl-en">setImage</span><span class="pl-kos">(</span><span class="pl-en">UIImage</span><span class="pl-kos">(</span>named<span class="pl-kos">:</span> <span class="pl-smi">R</span><span class="pl-kos">.</span>image<span class="pl-kos">.</span>dczl_back_black_icon<span class="pl-kos">.</span>name<span class="pl-kos">)</span><span class="pl-kos">,</span> for<span class="pl-kos">:</span> <span class="pl-kos">.</span>normal<span class="pl-kos">)</span>
+        <span class="pl-k">return</span> <span class="pl-en">UIBarButtonItem</span><span class="pl-kos">(</span>customView<span class="pl-kos">:</span> button<span class="pl-kos">)</span>
+    <span class="pl-kos">}</span>
+<span class="pl-kos">}</span>
+
+<span class="pl-k">extension</span> <span class="pl-smi">RTRootNavigationController</span> <span class="pl-kos">{</span>
+    <span class="pl-s1">@<span class="pl-smi">objc</span></span> <span class="pl-en">func</span> backAction<span class="pl-kos">(</span><span class="pl-kos">)</span> <span class="pl-kos">{</span>
+        <span class="pl-en">print</span><span class="pl-kos">(</span><span class="pl-s">"</span><span class="pl-s">我是新写的RTRootNavigationController里面的backAction</span><span class="pl-s">"</span><span class="pl-kos">)</span>
+        <span class="pl-en">popToRootViewController</span><span class="pl-kos">(</span>animated<span class="pl-kos">:</span> <span class="pl-c1">true</span><span class="pl-kos">)</span>
+    <span class="pl-kos">}</span>
+<span class="pl-kos">}</span></pre></div>
+<p>执行如下:</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/3768b09f0e3702bf8ca6f4f79341f3fbf0764600cf91fdac923e8026e1862b08/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323335313737353335352d32653132346436312d343163352d346438652d396263342d3964333039663566306536302e706e67"><img src="https://camo.githubusercontent.com/3768b09f0e3702bf8ca6f4f79341f3fbf0764600cf91fdac923e8026e1862b08/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323335313737353335352d32653132346436312d343163352d346438652d396263342d3964333039663566306536302e706e67" alt="" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/png/1333831/1742351775355-2e124d61-41c5-4d8e-9bc4-9d309f5f0e60.png" style="max-width: 100%;"></a></p>
+<p>这种思路是可行的，也就是说针对不同的页面与页面逻辑，我们只需要写实现一个RTRootNavigationController分类来处理即可。</p>
+<p>第二种方案：</p>
+<div class="highlight highlight-source-swift"><pre class="notranslate"><span class="pl-k">import</span> UIKit
+<span class="pl-k">import</span> RTRootNavigationController
+
+<span class="pl-k">class</span> <span class="pl-smi">BaseNavigationController</span><span class="pl-kos">:</span> <span class="pl-smi">RTRootNavigationController</span> <span class="pl-kos">{</span>
+    
+    <span class="pl-k">var</span> <span class="pl-s1"><span class="pl-c1">onBackCallback</span></span><span class="pl-kos">:</span> <span class="pl-kos">(</span><span class="pl-kos">(</span><span class="pl-kos">)</span> <span class="pl-c1">-&gt;</span> <span class="pl-smi">Void</span><span class="pl-kos">)</span><span class="pl-c1"><span class="pl-c1">?</span></span>
+    
+    <span class="pl-s1">@<span class="pl-smi">objc</span></span>
+    <span class="pl-k"><span class="pl-k">override</span></span> <span class="pl-en">func</span> onBack<span class="pl-kos">(</span>_ sender<span class="pl-kos">:</span> <span class="pl-smi">Any</span><span class="pl-kos">)</span> <span class="pl-kos">{</span>
+        <span class="pl-k">if</span> 伪代码<span class="pl-kos">,</span>有什么条件 <span class="pl-kos">{</span>
+            <span class="pl-en">onBackCallback</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">(</span><span class="pl-kos">)</span>
+        <span class="pl-kos">}</span> <span class="pl-k">else</span> <span class="pl-kos">{</span>
+            super<span class="pl-kos">.</span><span class="pl-en">onBack</span><span class="pl-kos">(</span>sender<span class="pl-kos">)</span>
+        <span class="pl-kos">}</span>
+    <span class="pl-kos">}</span>
+    
+<span class="pl-kos">}</span>
+
+/// 看了OC RTRootNavigationController的源码,onBack其实在.m文件中,没有声明在.h中
+/// 这里添加分类的同时,其实相当于将RTRootNavigationController的onBack方法给重写了
+/// 如果在OC中写,其实就是为RTRootNavigationController创建分类,并在分类的.h将此方法
+<span class="pl-k">extension</span> <span class="pl-smi">RTRootNavigationController</span> <span class="pl-kos">{</span>
+    <span class="pl-s1">@<span class="pl-smi">objc</span></span>
+    <span class="pl-en">func</span> onBack<span class="pl-kos">(</span>_ sender<span class="pl-kos">:</span> <span class="pl-smi">Any</span><span class="pl-kos">)</span> <span class="pl-kos">{</span>
+        <span class="pl-en">popViewController</span><span class="pl-kos">(</span>animated<span class="pl-kos">:</span> <span class="pl-c1">true</span><span class="pl-kos">)</span>
+    <span class="pl-kos">}</span>
+<span class="pl-kos">}</span></pre></div>
+<p>我们的重点是onBack方法的重写，OC中RTRootNavigationController的源码，onBack其实在.m文件中,没有声明在.h中，这里添加分类的同时，其实相当于将RTRootNavigationController的onBack方法暴露出来了，如果在OC中写,其实就是为RTRootNavigationController创建分类,并在分类的.h将此方法。</p>
+<p>接着我们通过继承RTRootNavigationController的方式，可以对onBack方法进行重写，通过条件拦截，比如BaseNavigationController里面的当前控制器是哪一个控制，我们就怎么怎么样，亦或者自己定义一个onBackCallback属性去做属性回调即可：</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/8b3f9e95490f4e4799a45cfda21e1fbb344d87ed0eca0058e031631547cd12f3/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323335323237353739352d66353261306163662d376366642d343632362d616533652d3132373865613736303836322e706e67"><img src="https://camo.githubusercontent.com/8b3f9e95490f4e4799a45cfda21e1fbb344d87ed0eca0058e031631547cd12f3/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323335323237353739352d66353261306163662d376366642d343632362d616533652d3132373865613736303836322e706e67" alt="" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/png/1333831/1742352275795-f52a0acf-7cfd-4626-ae3e-1278ea760862.png" style="max-width: 100%;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/2612b6c3ab7569545ad2187fb59b88d58b4579e97e3c5be30ed4dec82cca0c3c/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323335323332323333342d63653531643437622d633532302d346336662d383731312d6530323933386164656530322e706e67"><img src="https://camo.githubusercontent.com/2612b6c3ab7569545ad2187fb59b88d58b4579e97e3c5be30ed4dec82cca0c3c/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f706e672f313333333833312f313734323335323332323333342d63653531643437622d633532302d346336662d383731312d6530323933386164656530322e706e67" alt="" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/png/1333831/1742352322334-ce51d47b-c520-4c6f-8711-e02938adee02.png" style="max-width: 100%;"></a></p>
+<p>注意的是<strong>onBackCallback是全局存在与RTRootNavigationController中</strong>的，不同的业务页面可能会对onBackCallback做不同的实现，可能导致的问题就是onBackCallback不断被复写而达不到预期效果，可以考虑onBackCallback实现完成后置为nil，后续有使用再实现。</p>
+<p>方案一，直接在是RTRootNavigationController的分类中进行新增方法从而改变action方法，适合于返回事件与当前页面没什么耦合的情况，在新的方法中处理逻辑即可；</p>
+<p>方案二，因为可以将回调实现写在当前页面中，所以对于那种业务逻辑比较复杂的情况，使用方案二会比较好一点，当然使用方法二的成本也会高一点，需要对RT框架做对外暴露改造，继承RTRootNavigationController，以及对应的逻辑修改。</p>
+<p>当然也有更简单的方法，就是直接更改RT代码，我这里写了一个分类，以减少对代码的入侵：</p>
+<div class="highlight highlight-source-objc"><pre class="notranslate">#<span class="pl-k">import</span> <span class="pl-s"><span class="pl-pds">&lt;</span>RTRootNavigationController/RTRootNavigationController.h<span class="pl-pds">&gt;</span></span>
+
+NS_ASSUME_NONNULL_BEGIN
+
+<span class="pl-k">typedef</span> <span class="pl-en">void</span> (^OnBackCallback)(<span class="pl-k">void</span>);
+
+<span class="pl-k">@interface</span> <span class="pl-en">RTRootNavigationController</span> (OnBack)
+
+<span class="pl-k">@property</span> (<span class="pl-k">nonatomic</span>, <span class="pl-k">copy</span>) OnBackCallback onBackCallback;
+
+- (<span class="pl-k">void</span>)<span class="pl-en">onBack</span><span class="pl-en">:</span>(<span class="pl-c1">id</span>)<span class="pl-smi">sender</span>;
+
+<span class="pl-k">@end</span>
+
+NS_ASSUME_NONNULL_END</pre></div>
+<div class="highlight highlight-source-objc"><pre class="notranslate">#<span class="pl-k">import</span> <span class="pl-s"><span class="pl-pds">&lt;</span>objc/runtime.h<span class="pl-pds">&gt;</span></span>
+
+#<span class="pl-k">import</span> <span class="pl-s"><span class="pl-pds">"</span>RTRootNavigationController+OnBack.h<span class="pl-pds">"</span></span>
+
+<span class="pl-k">@implementation</span> <span class="pl-en">RTRootNavigationController</span> (OnBack)
+
+<span class="pl-c"><span class="pl-c">//</span> 关联对象的key</span>
+<span class="pl-k">static</span> <span class="pl-k">void</span> *OnBackCallbackKey = &amp;OnBackCallbackKey;
+
+<span class="pl-c"><span class="pl-c">//</span> 闭包属性的getter方法</span>
+- (OnBackCallback)<span class="pl-en">onBackCallback</span> {
+    <span class="pl-k">return</span> <span class="pl-c1">objc_getAssociatedObject</span>(self, OnBackCallbackKey);
+}
+
+<span class="pl-c"><span class="pl-c">//</span> 闭包属性的setter方法</span>
+- (<span class="pl-k">void</span>)<span class="pl-en">setOnBackCallback</span><span class="pl-en">:</span>(OnBackCallback)<span class="pl-smi">onBackCallback</span> {
+    <span class="pl-c1">objc_setAssociatedObject</span>(self, OnBackCallbackKey, onBackCallback, <span class="pl-c1">OBJC_ASSOCIATION_COPY_NONATOMIC</span>);
+}
+
+- (<span class="pl-k">void</span>)<span class="pl-en">onBack</span><span class="pl-en">:</span>(<span class="pl-c1">id</span>)<span class="pl-smi">sender</span>
+{
+    <span class="pl-k">if</span> (self.<span class="pl-smi">onBackCallback</span>) {
+        self.<span class="pl-c1">onBackCallback</span>();
+    } <span class="pl-k">else</span> {
+        [<span class="pl-c1">self</span> <span class="pl-c1">popViewControllerAnimated:</span><span class="pl-c1">YES</span>];
+    }
+}
+
+<span class="pl-k">@end</span></pre></div>
+<p>以前在使用RT框架的过程中，遇到这种禁掉侧滑，返回按钮需要自定义的时候，只能直接将系统导航栏都隐藏了，去写一个高保真的系统导航来完成功能，通过以上思路，可以让代码与逻辑更加简单。</p>
+<h4>包含WebView页面的返回上一页，侧滑返回上一页，返回pop与侧滑pop：</h4>
+<p>其实可以认为第4点其实就是对于第3点扩充与应用。</p>
+<p>在因为iOS里面WebView点击跳转，我们可以认为是在同一个WebView不停的做Web内部的路由，而这种路由动画就“好像”push，于是什么时候是返回Web的上一个路由还是返回上一个控制器，就成为了判断的关键。可能文字说不明白，直接上个动图:</p>
+<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://camo.githubusercontent.com/fc70c9ee29388517077bd17587dcbcac293bb122fd5e2c96809d46d1adc9f668/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6769662f313333333833312f313734323337303832383238312d38393266356130362d383365642d346434322d616363642d6364623463323365323866392e676966"><img src="https://camo.githubusercontent.com/fc70c9ee29388517077bd17587dcbcac293bb122fd5e2c96809d46d1adc9f668/68747470733a2f2f63646e2e6e6c61726b2e636f6d2f79757175652f302f323032352f6769662f313333333833312f313734323337303832383238312d38393266356130362d383365642d346434322d616363642d6364623463323365323866392e676966" alt="" data-canonical-src="https://cdn.nlark.com/yuque/0/2025/gif/1333831/1742370828281-892f5a06-83ed-4d42-accd-cdb4c23e28f9.gif" style="max-width: 100%;"></a></p>
+<p>因为自己的开发过程中使用了Rx，所以代码逻辑如下：</p>
+<div class="highlight highlight-source-objc"><pre class="notranslate">        (rt_navigationController as? BaseNavigationController)?.onBackCallback = { [weak <span class="pl-c1">self</span>] in
+            <span class="pl-k">if</span> self?.<span class="pl-smi">webView</span>.<span class="pl-smi">canGoBack</span> == <span class="pl-c1">true</span> {
+                self?.<span class="pl-smi">webView</span>.<span class="pl-c1">goBack</span>()
+            } <span class="pl-k">else</span> {
+                self?.<span class="pl-smi">navigationController</span>?.<span class="pl-c1">popViewController</span>(animated: <span class="pl-c1">true</span>)
+            }
+        }
+        
+        <span class="pl-c"><span class="pl-c">//</span>/ iOS 如何让WKWebView侧滑返回时html逐级返回，而不是直接返回到上级控制器?</span>
+        <span class="pl-c"><span class="pl-c">//</span>/ https://www.imooc.com/article/26158</span>
+        webView.rx.observeWeakly(Bool.self, <span class="pl-s"><span class="pl-pds">"</span>canGoBack<span class="pl-pds">"</span></span>)
+            .subscribe(onNext: { [weak <span class="pl-c1">self</span>] newValue in
+                <span class="pl-c1">print</span>(<span class="pl-s"><span class="pl-pds">"</span>新的值: <span class="pl-ii">\(</span>newValue)<span class="pl-pds">"</span></span>)
+                
+                <span class="pl-k">if</span> let canGoBack = newValue {
+                    self?.<span class="pl-smi">rt_disableInteractivePop</span> = canGoBack
+                }
+            })
+            .disposed(by: rx.disposeBag)</pre></div>
+<p>如果不使用Rx与RT，可以参考下面这段代码：</p>
+<div class="highlight highlight-source-swift"><pre class="notranslate"><span class="pl-k">private</span> <span class="pl-k">let</span> <span class="pl-s1">canGoBackKeyPath</span> <span class="pl-c1">=</span> <span class="pl-s">"</span><span class="pl-s">canGoBack</span><span class="pl-s">"</span>
+
+webView<span class="pl-kos">.</span><span class="pl-en">addObserver</span><span class="pl-kos">(</span><span class="pl-smi">self</span><span class="pl-kos">,</span> forKeyPath<span class="pl-kos">:</span> canGoBackKeyPath<span class="pl-kos">,</span> options<span class="pl-kos">:</span> <span class="pl-kos">.</span>new<span class="pl-kos">,</span> context<span class="pl-kos">:</span> <span class="pl-smi">nil</span><span class="pl-kos">)</span>
+
+<span class="pl-k">open</span> <span class="pl-k"><span class="pl-k">override</span></span> <span class="pl-en">func</span> observeValue<span class="pl-kos">(</span>forKeyPath keyPath<span class="pl-kos">:</span> <span class="pl-smi">String</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">,</span>
+                                of object<span class="pl-kos">:</span> <span class="pl-smi">Any</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">,</span>
+                                change<span class="pl-kos">:</span> <span class="pl-kos">[</span><span class="pl-smi">NSKeyValueChangeKey</span><span class="pl-kos">:</span> <span class="pl-smi">Any</span><span class="pl-kos">]</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">,</span>
+                                context<span class="pl-kos">:</span> <span class="pl-smi">UnsafeMutableRawPointer</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">)</span> <span class="pl-kos">{</span>
+    <span class="pl-k">guard</span> <span class="pl-k">let</span> theKeyPath <span class="pl-c1">=</span> keyPath<span class="pl-kos">,</span> object <span class="pl-k">as?</span> <span class="pl-smi">WKWebView</span> <span class="pl-c1">==</span> webView <span class="pl-k">else</span> <span class="pl-kos">{</span>
+        super<span class="pl-kos">.</span><span class="pl-en">observeValue</span><span class="pl-kos">(</span>forKeyPath<span class="pl-kos">:</span> keyPath<span class="pl-kos">,</span> of<span class="pl-kos">:</span> object<span class="pl-kos">,</span> change<span class="pl-kos">:</span> change<span class="pl-kos">,</span> context<span class="pl-kos">:</span> context<span class="pl-kos">)</span>
+        <span class="pl-k">return</span>
+    <span class="pl-kos">}</span>
+    
+    <span class="pl-k">if</span> theKeyPath <span class="pl-c1">==</span> canGoBackKeyPath<span class="pl-kos">{</span>
+        <span class="pl-k">if</span> <span class="pl-k">let</span> newValue <span class="pl-c1">=</span> <span class="pl-en">change</span><span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">[</span><span class="pl-smi">NSKeyValueChangeKey</span><span class="pl-kos">.</span>newKey<span class="pl-kos">]</span><span class="pl-kos">{</span>
+            <span class="pl-k">let</span> <span class="pl-s1">newV</span> <span class="pl-c1">=</span> newValue <span class="pl-k">as!</span> <span class="pl-smi">Bool</span>
+            <span class="pl-k">if</span> newV <span class="pl-c1">==</span> <span class="pl-c1">true</span> <span class="pl-kos">{</span>
+                <span class="pl-smi">self</span><span class="pl-kos">.</span>navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>interactivePopGestureRecognizer<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>isEnabled <span class="pl-c1">=</span> <span class="pl-c1">false</span>;
+            <span class="pl-kos">}</span><span class="pl-k">else</span><span class="pl-kos">{</span>
+                <span class="pl-smi">self</span><span class="pl-kos">.</span>navigationController<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>interactivePopGestureRecognizer<span class="pl-c1"><span class="pl-c1">?</span></span><span class="pl-kos">.</span>isEnabled <span class="pl-c1">=</span> <span class="pl-c1">true</span>;
+            <span class="pl-kos">}</span>
+        <span class="pl-kos">}</span>
+    <span class="pl-kos">}</span>
+<span class="pl-kos">}</span>
+
+
+<span class="pl-en">deinit</span> <span class="pl-kos">{</span>
+    webView<span class="pl-kos">.</span><span class="pl-en">removeObserver</span><span class="pl-kos">(</span><span class="pl-smi">self</span><span class="pl-kos">,</span> forKeyPath<span class="pl-kos">:</span> canGoBackKeyPath<span class="pl-kos">,</span> context<span class="pl-kos">:</span> <span class="pl-smi">nil</span><span class="pl-kos">)</span>
+<span class="pl-kos">}</span></pre></div>
+<p><strong>整体的逻辑就是通过监听WebView的canGoBack属性，将其值与侧滑使能绑定，自定义重写的返回按钮事件，也与canGoBack做逻辑判断，canGoBack为true，就做WebView的返回上一页，canGoBack为false，就返回上一页。</strong></p>
+<p>最近因为看TheRoute的源码，里面没有push跳转的过程中删除栈的功能，于是我想到了RTRootNavigationController，这里正好做了总结，也算不错。</p>
+<ul>
+<li></li>
+</ul></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
