@@ -475,10 +475,7 @@ webView<span class="pl-kos">.</span><span class="pl-en">addObserver</span><span 
     webView<span class="pl-kos">.</span><span class="pl-en">removeObserver</span><span class="pl-kos">(</span><span class="pl-smi">self</span><span class="pl-kos">,</span> forKeyPath<span class="pl-kos">:</span> canGoBackKeyPath<span class="pl-kos">,</span> context<span class="pl-kos">:</span> <span class="pl-smi">nil</span><span class="pl-kos">)</span>
 <span class="pl-kos">}</span></pre></div>
 <p><strong>整体的逻辑就是通过监听WebView的canGoBack属性，将其值与侧滑使能绑定，自定义重写的返回按钮事件，也与canGoBack做逻辑判断，canGoBack为true，就做WebView的返回上一页，canGoBack为false，就返回上一页。</strong></p>
-<p>最近因为看TheRoute的源码，里面没有push跳转的过程中删除栈的功能，于是我想到了RTRootNavigationController，这里正好做了总结，也算不错。</p>
-<ul>
-<li></li>
-</ul></div>
+<p>最近因为看TheRoute的源码，里面没有push跳转的过程中删除栈的功能，于是我想到了RTRootNavigationController，这里正好做了总结，也算不错。</p></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
