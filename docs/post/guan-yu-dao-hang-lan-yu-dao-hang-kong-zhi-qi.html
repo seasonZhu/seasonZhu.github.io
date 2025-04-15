@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/19945063?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="使用系统控件的困境
+如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。">
+<meta property="og:title" content="关于导航栏与导航控制器">
+<meta property="og:description" content="使用系统控件的困境
+如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://seasonZhu.github.io/post/guan-yu-dao-hang-lan-yu-dao-hang-kong-zhi-qi.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/19945063?v=4">
+<title>关于导航栏与导航控制器</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">关于导航栏与导航控制器</h1>
+<div class="title-right">
+    <a href="https://seasonZhu.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/seasonZhu/seasonZhu.github.io/issues/3" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><p>使用系统控件的困境<br>
+如果去学习Android、Flutter或者前端的代码，就会发现其他App的导航栏都是跟着独立页面走。<br>
+但是iOS却不同，你会发现NavigationController更像一个全局的单例，每个页面的NavigationControlle都是一个样的。<br>
+而往往业务侧对导航栏的需求又是多样的，渐变、一屏到顶、Web页面全屏接管等等，都会让你在导航栏的配置上焦头烂额，效果达不到也就算了，甚至会引出bug。<br>
+而通过隐藏系统导航栏，全部自己写自定义导航栏的时候，NavigationController又会阴魂不散，时不时给你一点意外惊喜。<br>
+我这里没有特别多的好策略，就是给出一个我喜欢用的库——RTRootNavigationController。<br>
+这里，我先给出完全使用系统UINavigationController的方案，这个方案在RxStudy上面已经实践过，其中push时的假死bug也是网友斧正帮我解决的。这个项目中，完全使用系统导航栏，只用自定义leftBarButtonItem就可以了。<br>
+但是需要注意的是，这个思路只适合架构简单，没有太多自定义需求的项目。<br>
+class BaseViewController: UIViewController {</p>
+<pre class="notranslate"><code class="notranslate">override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+    super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+}
+
+required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+}
+
+override func viewDidLoad() {
+    super.viewDidLoad()
+    
+    /// 最简单的设置统一返回按钮的方法,所有的控制器继承该基类即可
+    let leftBarButtonItem = UIBarButtonItem(image: R.image.back(), style: .plain, target: self, action: #selector(leftBarButtonItemAction(_:)))
+    navigationItem.leftBarButtonItem = (navigationController?.viewControllers.count ?? 0) &gt; 1 ? leftBarButtonItem : nil
+    navigationItem.hidesBackButton = true
+}
+ 
+/// 将此方法从private改成对外暴露,让子类能有能力重新这个返回的方法,一般情况这个返回的方法会与侧滑返回的逻辑绑定,比如MyJueJinController就是例子
+/// - Parameter item: UIBarButtonItem
+@objc
+func leftBarButtonItemAction(_ item: UIBarButtonItem) {
+    navigationController?.popViewController(animated: true)
+}
+</code></pre>
+<p>}<br>
+class BaseNavigationController: UINavigationController {</p>
+<pre class="notranslate"><code class="notranslate">override func viewDidLoad() {
+    super.viewDidLoad()
+    interactivePopGestureRecognizer?.delegate = self
+    delegate = self
+}
+</code></pre>
+<p>}</p>
+<p>extension BaseNavigationController: UIGestureRecognizerDelegate, UINavigationControllerDelegate {<br>
+func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {<br>
+interactivePopGestureRecognizer?.isEnabled = true<br>
+/// 解决某些情况下push时的假死bug，防止把根控制器pop掉<br>
+if navigationController.viewControllers.count == 1 {<br>
+interactivePopGestureRecognizer?.isEnabled = false<br>
+}<br>
+}<br>
+}<br>
+谁包裹谁？<br>
+再来就是有关于RTNavigationController，其中的包裹方案有以下几种：<br>
+● 方案一：使用 RTRootNavigationController 包裹整个 UITabBarController，适用于需要全局统一管理导航控制器的情况。这种方案的优点是结构简单，适合需要全局统一管理导航控制器的情况。缺点是每个选项卡中的视图控制器共享同一个导航控制器，可能会导致导航堆栈管理复杂。</p>
+<p>● 方案二：使用 RTRootNavigationController 包裹每个 UIViewController，然后用 UITabBarController 包裹这些 RTRootNavigationController，适用于需要独立管理每个选项卡中的导航堆栈的情况。这种方案的优点是每个选项卡中的视图控制器都有独立的导航控制器，导航堆栈管理更清晰。缺点是结构稍微复杂一些。</p>
+<p>其实这种结构不仅适用于RTRootNavigationController，其实对于原生UINavigationController也一样适用，我一般使用方案二。<br>
+我个人的理解是，每一个Tab包含的都是一种相关的业务，独立为每一种tab业务用一个Navigation进行管理比较合适，这样就算是路由业务，也能更好的解耦。<br>
+RTRootNavigationController的基本使用<br>
+页面包裹相关的思路其实和使用UINavigationController一致，这里就不再展开，说一些需要注意的<br>
+● 页面隐藏导航栏<br>
+class ExampleController: UIViewController {<br>
+override func viewDidLoad() {<br>
+super.viewDidLoad()<br>
+setupUI()<br>
+}</p>
+<pre class="notranslate"><code class="notranslate">private func setupUI() {
+    /// 隐藏导航栏 返回手势可用
+    navigationController?.isNavigationBarHidden = true
+    /// 注意使用RT，一定要把这个API设置，并设置为false，否则页面无法侧滑
+    rt_disableInteractivePop = false
+}
+</code></pre>
+<p>}<br>
+RT默认当页面导航栏隐藏时，系统的侧滑失效，于是这里rt_disableInteractivePop必须手动设置一下。<br>
+RT相关逻辑代码如下：</p>
+<ul>
+<li>
+<p>(void)viewDidLayoutSubviews<br>
+{<br>
+[super viewDidLayoutSubviews];</p>
+<p>UIViewController *viewController = self.topViewController;<br>
+if (!viewController.rt_hasSetInteractivePop) {<br>
+BOOL hasSetLeftItem = viewController.navigationItem.leftBarButtonItem != nil;<br>
+if (self.navigationBarHidden) {<br>
+viewController.rt_disableInteractivePop = YES;<br>
+} else if (hasSetLeftItem) {<br>
+viewController.rt_disableInteractivePop = YES;<br>
+} else {<br>
+viewController.rt_disableInteractivePop = NO;<br>
+}</p>
+<p>}<br>
+if ([self.parentViewController isKindOfClass:[RTContainerController class]] &amp;&amp;<br>
+[self.parentViewController.parentViewController isKindOfClass:[RTRootNavigationController class]]) {<br>
+[self.rt_navigationController _installsLeftBarButtonItemIfNeededForViewController:viewController];<br>
+}<br>
+}</p>
+</li>
+<li>
+<p>(void)setNavigationBarHidden:(BOOL)hidden animated:(BOOL)animated<br>
+{<br>
+[super setNavigationBarHidden:hidden animated:animated];<br>
+if (!self.visibleViewController.rt_hasSetInteractivePop) {<br>
+self.visibleViewController.rt_disableInteractivePop = hidden;<br>
+}<br>
+}<br>
+● 页面查找：<br>
+我们看一下一个被RTNavigationController包裹的页面层级：</p>
+</li>
+</ul>
+<p>/// 切换到发现页面的社区页面<br>
+if let rt = Tools.currentVC()?.tabBarController?.viewControllers?.first as? RTRootNavigationController,<br>
+let containerController = rt.topViewController as? RTContainerController,<br>
+let viewController = containerController.contentViewController as? UIViewController {<br>
+}<br>
+我们需要拿到RTContainerController，接着拿到RTContainerController里面的contentViewController属性获取真正我们构建的控制器，而使用UINavigationController，在topViewController我们就可以直接转我们构建的控制器了。<br>
+push与pop有完成回调：</p>
+<ul>
+<li>
+<p>(void)pushViewController:(UIViewController *)viewController<br>
+animated:(BOOL)animated<br>
+complete:(void(^)(BOOL finished))block;</p>
+</li>
+<li>
+<p>(UIViewController *)popViewControllerAnimated:(BOOL)animated complete:(void(^)(BOOL finished))block;<br>
+但使用rt_navigationController时，可以使用这个改造后的push与pop，它能更好的控制push与pop之后的控制。<br>
+删除栈<br>
+通过remove可以删除指定的栈内的控制器，特别是当push到某一个页面之后，需要对栈做优化，值得注意的是，使用RT的API会比系统的舒适一点，比如下面这个例子就是push完成后，将当前的页面给删除掉：<br>
+self.rt_navigationController?.pushViewController(ChangePhoneController(type: .bindNewPhone), animated: true, complete: { _ in<br>
+self.rt_navigationController.removeViewController(self)<br>
+})<br>
+当然这里使用通过对象删除栈内的方式，并不通用，因为有的时候我们无法拿到栈内的对象，于是通过控制器名称等标签的查找与删除，更符合使用，下面是我封装的一个方法：<br>
+// MARK: - 这两个方法是基于RTRootNavigationController的封装<br>
+extension BaseViewController {</p>
+<p>/// push到目标控制器,并通过类名进行定向移除导航控制器中的栈内控制器<br>
+/// - Parameters:<br>
+///   - viewController: 目标控制器<br>
+///   - animated: 是否有动画效果<br>
+///   - removeViewControllerClassNameList: 需要移除控制器名称的数组<br>
+///   - isRemoveSelf: 是否移除触发push方法的当前控制器<br>
+func pushViewController(_ viewController: UIViewController, animated: Bool, removeViewControllerClassNameList: [String] = [], isRemoveSelf: Bool = true) {<br>
+rt_navigationController?.pushViewController(viewController, animated: animated) { [weak self] _ in<br>
+guard let self else { return }</p>
+<pre class="notranslate"><code class="notranslate">      if let viewControllers = self.navigationController?.viewControllers {
+          for vc in viewControllers where removeViewControllerClassNameList.contains(vc.className) {
+              self.rt_navigationController?.removeViewController(vc)
+          }
+      }
+      
+      if isRemoveSelf {
+          self.rt_navigationController?.removeViewController(self)
+      }
+  }
+</code></pre>
+<p>}</p>
+<p>/// 用于通过类名进行定向pop<br>
+/// - Parameters:<br>
+///   - className: pop回退到的控制器名称<br>
+///   - animated: 是否有动画效果<br>
+///   - completion: pop完成后的回调<br>
+func popToViewController(className: String, animated: Bool, completion: ((Bool) -&gt; Void)? = nil) {</p>
+<pre class="notranslate"><code class="notranslate">  var isPoped = false
+  
+  for vc in self.navigationController?.viewControllers ?? [] where vc.className == className {
+      rt_navigationController.pop(to: vc, animated: animated, complete: completion)
+      isPoped = true
+      break
+  }
+  
+  if !isPoped {
+      navigationController?.popViewController(animated: true)
+  }
+</code></pre>
+<p>}<br>
+}<br>
+这里的className可以认为是NSStringForClass的一种封装，简单而言就是通过类名去识别栈内是否有符合控制器实例，当然这个方法还是有一个缺陷，就是如果栈内有2个或者2个以上同名的控制器实例如何解决？<br>
+方法还是有的，只是没有封装到这个方法中，我们在构建控制器的时候，可以给控制器打tag，通过区分tag就可以更好的进行颗粒度细致的控制，这里就讲到这里，扩展我想大家都会了。<br>
+禁止侧滑，点击返回按钮的逻辑需要自定义：<br>
+如果看RT的官方Demo，在页面中自定义返回按钮的代码，就是下面这种：</p>
+</li>
+<li>
+<p>(UIBarButtonItem *)rt_customBackItemWithTarget:(id)target action:(SEL)action<br>
+{<br>
+UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];<br>
+[button setImage:[UIImage imageNamed:@"back"] forState:UIControlStateNormal];<br>
+[button sizeToFit];<br>
+[button addTarget:target<br>
+action:action<br>
+forControlEvents:UIControlEventTouchUpInside];<br>
+return [[UIBarButtonItem alloc] initWithCustomView:button];<br>
+}</p>
+</li>
+</ul>
+<p>这里的action直接调用了super的action，如果在当前页面传一个自己写的方法，那么一定会抛出崩溃出来，堆栈信息如下：<br>
+*** Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: '-[DCZLApp.BaseNavigationController backAction]: unrecognized selector sent to instance 0x109490000'<br>
+你会发现，没有找到这个方法，为什么？我们可以跟踪到rt_customBackItemWithTarget在RT框架中的实现：</p>
+<ul>
+<li>(void)_installsLeftBarButtonItemIfNeededForViewController:(UIViewController *)viewController<br>
+{<br>
+BOOL isRootVC = viewController == RTSafeUnwrapViewController(self.viewControllers.firstObject);<br>
+BOOL hasSetLeftItem = viewController.navigationItem.leftBarButtonItem != nil;<br>
+if (!isRootVC &amp;&amp; !self.useSystemBackBarButtonItem &amp;&amp; !hasSetLeftItem) {<br>
+if ([viewController respondsToSelector:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(rt_customBackItemWithTarget:action:)]) {<br>
+viewController.navigationItem.leftBarButtonItem = [viewController rt_customBackItemWithTarget:self<br>
+action:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(onBack:)];<br>
+}<br>
+else if ([viewController respondsToSelector:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(customBackItemWithTarget:action:)]) {<br>
+#pragma clang diagnostic push<br>
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"<br>
+viewController.navigationItem.leftBarButtonItem = [viewController customBackItemWithTarget:self<br>
+action:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(onBack:)];<br>
+#pragma clang diagnostic pop<br>
+}<br>
+else {<br>
+viewController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Back", nil)<br>
+style:UIBarButtonItemStylePlain<br>
+target:self<br>
+action:<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/selector/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/selector">@selector</a>(onBack:)];<br>
+}<br>
+}<br>
+}<br>
+它最后回去调用RTRootNavigationController中的onBack方法，如果我们想要在控制器中重写action，那么可以有两个实现思路：<br>
+● 在RTRootNavigationController中新增分类，添加自定义方法，并在当前页面进行调用实现<br>
+● 重写RTRootNavigationController中的onBack方法<br>
+我们先看第一个思路：<br>
+extension BaseViewController {<br>
+override func rt_customBackItem(withTarget target: Any!, action: Selector!) -&gt; UIBarButtonItem! {<br>
+let button = ExtendTouchButton()<br>
+button.frame = CGRect(x: 0, y: 0, width: 44, height: 44)<br>
+button.addTarget(target, action: #selector(self.rt_navigationController.backAction), for: .touchUpInside)<br>
+button.contentHorizontalAlignment = .left<br>
+button.setImage(UIImage(named: R.image.dczl_back_black_icon.name), for: .normal)<br>
+return UIBarButtonItem(customView: button)<br>
+}<br>
+}</li>
+</ul>
+<p>extension RTRootNavigationController {<br>
+<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/objc/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/objc">@objc</a> func backAction() {<br>
+print("我是新写的RTRootNavigationController里面的backAction")<br>
+popToRootViewController(animated: true)<br>
+}<br>
+}<br>
+执行如下:</p>
+<p>这种思路是可行的，也就是说针对不同的页面与页面逻辑，我们只需要写实现一个RTRootNavigationController分类来处理即可。<br>
+第二种方案：<br>
+import UIKit<br>
+import RTRootNavigationController</p>
+<p>class BaseNavigationController: RTRootNavigationController {</p>
+<pre class="notranslate"><code class="notranslate">var onBackCallback: (() -&gt; Void)?
+
+@objc
+override func onBack(_ sender: Any) {
+    if 伪代码,有什么条件 {
+        onBackCallback?()
+    } else {
+        super.onBack(sender)
+    }
+}
+</code></pre>
+<p>}</p>
+<p>/// 看了OC RTRootNavigationController的源码,onBack其实在.m文件中,没有声明在.h中<br>
+/// 这里添加分类的同时,其实相当于将RTRootNavigationController的onBack方法给重写了<br>
+/// 如果在OC中写,其实就是为RTRootNavigationController创建分类,并在分类的.h将此方法<br>
+extension RTRootNavigationController {<br>
+<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/objc/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/objc">@objc</a><br>
+func onBack(_ sender: Any) {<br>
+popViewController(animated: true)<br>
+}<br>
+}<br>
+我们的重点是onBack方法的重写，OC中RTRootNavigationController的源码，onBack其实在.m文件中,没有声明在.h中，这里添加分类的同时，其实相当于将RTRootNavigationController的onBack方法暴露出来了，如果在OC中写,其实就是为RTRootNavigationController创建分类,并在分类的.h将此方法。<br>
+接着我们通过继承RTRootNavigationController的方式，可以对onBack方法进行重写，通过条件拦截，比如BaseNavigationController里面的当前控制器是哪一个控制，我们就怎么怎么样，亦或者自己定义一个onBackCallback属性去做属性回调即可：</p>
+<p>注意的是onBackCallback是全局存在与RTRootNavigationController中的，不同的业务页面可能会对onBackCallback做不同的实现，可能导致的问题就是onBackCallback不断被复写而达不到预期效果，可以考虑onBackCallback实现完成后置为nil，后续有使用再实现。<br>
+方案一，直接在是RTRootNavigationController的分类中进行新增方法从而改变action方法，适合于返回事件与当前页面没什么耦合的情况，在新的方法中处理逻辑即可；<br>
+方案二，因为可以将回调实现写在当前页面中，所以对于那种业务逻辑比较复杂的情况，使用方案二会比较好一点，当然使用方法二的成本也会高一点，需要对RT框架做对外暴露改造，继承RTRootNavigationController，以及对应的逻辑修改。<br>
+当然也有更简单的方法，就是直接更改RT代码，我这里写了一个分类，以减少对代码的入侵：<br>
+#import &lt;RTRootNavigationController/RTRootNavigationController.h&gt;</p>
+<p>NS_ASSUME_NONNULL_BEGIN</p>
+<p>typedef void (^OnBackCallback)(void);</p>
+<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/interface/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/interface">@interface</a> RTRootNavigationController (OnBack)</p>
+<p><a class="user-mention notranslate" data-hovercard-type="organization" data-hovercard-url="/orgs/Property/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/Property">@Property</a> (nonatomic, copy) OnBackCallback onBackCallback;</p>
+<ul>
+<li>(void)onBack:(id)sender;</li>
+</ul>
+<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/EnD/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/EnD">@EnD</a></p>
+<p>NS_ASSUME_NONNULL_END<br>
+#import &lt;objc/runtime.h&gt;</p>
+<p>#import "RTRootNavigationController+OnBack.h"</p>
+<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/implementation/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/implementation">@implementation</a> RTRootNavigationController (OnBack)</p>
+<p>// 关联对象的key<br>
+static void *OnBackCallbackKey = &amp;OnBackCallbackKey;</p>
+<p>// 闭包属性的getter方法</p>
+<ul>
+<li>(OnBackCallback)onBackCallback {<br>
+return objc_getAssociatedObject(self, OnBackCallbackKey);<br>
+}</li>
+</ul>
+<p>// 闭包属性的setter方法</p>
+<ul>
+<li>
+<p>(void)setOnBackCallback:(OnBackCallback)onBackCallback {<br>
+objc_setAssociatedObject(self, OnBackCallbackKey, onBackCallback, OBJC_ASSOCIATION_COPY_NONATOMIC);<br>
+}</p>
+</li>
+<li>
+<p>(void)onBack:(id)sender<br>
+{<br>
+if (self.onBackCallback) {<br>
+self.onBackCallback();<br>
+} else {<br>
+[self popViewControllerAnimated:YES];<br>
+}<br>
+}</p>
+</li>
+</ul>
+<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/EnD/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/EnD">@EnD</a><br>
+以前在使用RT框架的过程中，遇到这种禁掉侧滑，返回按钮需要自定义的时候，只能直接将系统导航栏都隐藏了，去写一个高保真的系统导航来完成功能，通过以上思路，可以让代码与逻辑更加简单。<br>
+包含WebView页面的返回上一页，侧滑返回上一页，返回pop与侧滑pop：<br>
+其实可以认为第4点其实就是对于第3点扩充与应用。<br>
+在因为iOS里面WebView点击跳转，我们可以认为是在同一个WebView不停的做Web内部的路由，而这种路由动画就“好像”push，于是什么时候是返回Web的上一个路由还是返回上一个控制器，就成为了判断的关键。可能文字说不明白，直接上个动图:</p>
+<p>因为自己的开发过程中使用了Rx，所以代码逻辑如下：<br>
+(rt_navigationController as? BaseNavigationController)?.onBackCallback = { [weak self] in<br>
+if self?.webView.canGoBack == true {<br>
+self?.webView.goBack()<br>
+} else {<br>
+self?.navigationController?.popViewController(animated: true)<br>
+}<br>
+}</p>
+<pre class="notranslate"><code class="notranslate">    /// iOS 如何让WKWebView侧滑返回时html逐级返回，而不是直接返回到上级控制器?
+    /// https://www.imooc.com/article/26158
+    webView.rx.observeWeakly(Bool.self, "canGoBack")
+        .subscribe(onNext: { [weak self] newValue in
+            print("新的值: \(newValue)")
+            
+            if let canGoBack = newValue {
+                self?.rt_disableInteractivePop = canGoBack
+            }
+        })
+        .disposed(by: rx.disposeBag)
+</code></pre>
+<p>如果不使用Rx与RT，可以参考下面这段代码：<br>
+private let canGoBackKeyPath = "canGoBack"</p>
+<p>webView.addObserver(self, forKeyPath: canGoBackKeyPath, options: .new, context: nil)</p>
+<p>open override func observeValue(forKeyPath keyPath: String?,<br>
+of object: Any?,<br>
+change: [NSKeyValueChangeKey: Any]?,<br>
+context: UnsafeMutableRawPointer?) {<br>
+guard let theKeyPath = keyPath, object as? WKWebView == webView else {<br>
+super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)<br>
+return<br>
+}</p>
+<pre class="notranslate"><code class="notranslate">if theKeyPath == canGoBackKeyPath{
+    if let newValue = change?[NSKeyValueChangeKey.newKey]{
+        let newV = newValue as! Bool
+        if newV == true {
+            self.navigationController?.interactivePopGestureRecognizer?.isEnabled = false;
+        }else{
+            self.navigationController?.interactivePopGestureRecognizer?.isEnabled = true;
+        }
+    }
+}
+</code></pre>
+<p>}</p>
+<p>deinit {<br>
+webView.removeObserver(self, forKeyPath: canGoBackKeyPath, context: nil)<br>
+}<br>
+整体的逻辑就是通过监听WebView的canGoBack属性，将其值与侧滑使能绑定，自定义重写的返回按钮事件，也与canGoBack做逻辑判断，canGoBack为true，就做WebView的返回上一页，canGoBack为false，就返回上一页。<br>
+总结<br>
+最近因为看TheRoute的源码，里面没有push跳转的过程中删除栈的功能，于是我想到了RTRootNavigationController，它是我个人用的比较多的一个库，在它原有的基础功能上，我结合自己使用过程中的业务场景与问题做了总结，希望可以帮助到大家。</p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://seasonZhu.github.io">SeasonZhu的闲情逸致</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","seasonZhu/seasonZhu.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+
+
+</html>
