@@ -8,7 +8,11 @@
   </head>
   <body>
     {import.meta.env.DEV ? (
-      <script is:inline src="https://cdn.jsdelivr.net/npm/decap-cms@3.18.0/dist/decap-cms.js"></script>
+      <>
+        <script is:inline>window.CMS_MANUAL_INIT = true;</script>
+        <script is:inline src="https://cdn.jsdelivr.net/npm/decap-cms@3.18.0/dist/decap-cms.js"></script>
+        <script is:inline src="/admin/editor-components.js"></script>
+      </>
     ) : (
       <>
         <script is:inline>

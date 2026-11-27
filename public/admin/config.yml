@@ -5,6 +5,7 @@ backend:
   site_domain: seasonzhu.netlify.app
 
 local_backend: true
+publish_mode: editorial_workflow
 locale: zh_Hans
 site_url: https://seasonzhu.github.io
 display_url: https://seasonzhu.github.io
@@ -19,6 +20,14 @@ collections:
     create: true
     slug: "{{slug}}"
     preview_path: "blog/{{slug}}/"
+    summary: "{{title}} · {{category}} · {{published}}"
+    sortable_fields:
+      - title
+      - { field: published, label: 发布日期, default_sort: desc }
+    view_groups:
+      - { label: 按栏目, field: category }
+    view_filters:
+      - { label: 标记为草稿, field: draft, pattern: true }
     fields:
       - { label: 标题, name: title, widget: string }
       - { label: 摘要, name: description, widget: text }
@@ -42,5 +51,20 @@ collections:
         required: false
       - { label: 标签, name: tags, widget: list, required: false }
       - { label: 封面, name: image, widget: image, required: false, default: "" }
-      - { label: 草稿, name: draft, widget: boolean, default: true }
+      - { label: 草稿, name: draft, widget: boolean, default: false, hint: "开启后正式站点隐藏文章。暂存未发布稿件请使用工作流。" }
       - { label: 正文, name: body, widget: markdown }
+  - name: pages
+    label: 固定页面
+    files:
+      - file: src/content/spec/about.md
+        name: about
+        label: 关于页
+        preview_path: about/
+        fields:
+          - { label: 正文, name: body, widget: markdown }
+      - file: src/content/spec/watchlist.md
+        name: watchlist
+        label: 追番与游戏清单
+        preview_path: watchlist/
+        fields:
+          - { label: 正文, name: body, widget: markdown }
