@@ -1,4 +1,10 @@
 const cms = window.CMS;
+const editorComponents = new Map();
+
+function registerEditorComponent(component) {
+  editorComponents.set(component.id, component);
+  cms.registerEditorComponent(component);
+}
 
 const escapeHTML = (value = "") =>
   String(value).replace(/[&<>"']/g, (character) => ({
@@ -16,7 +22,7 @@ const bilibiliBlock = ({ bvid }) => {
   return `<iframe src="https://player.bilibili.com/player.html?bvid=${bvid}&amp;autoplay=0" title="B 站视频" loading="lazy" allowfullscreen style="width: 100%; aspect-ratio: 16 / 9; border: 0"></iframe>`;
 };
 
-cms.registerEditorComponent({
+registerEditorComponent({
   id: "season-bilibili",
   label: "插入 B 站视频",
   fields: [{ name: "bvid", label: "BV 号", widget: "string", pattern: ["^BV[0-9A-Za-z]{10}$", "请输入完整的 BV 号"] }],
@@ -26,7 +32,7 @@ cms.registerEditorComponent({
   toPreview: ({ bvid }) => `<p>B 站视频：${escapeHTML(bvid)}</p>`,
 });
 
-cms.registerEditorComponent({
+registerEditorComponent({
   id: "season-spoiler",
   label: "剧透折叠",
   fields: [
@@ -43,7 +49,7 @@ cms.registerEditorComponent({
   toPreview: ({ summary, content }) => `<details><summary>${escapeHTML(summary)}</summary><p>${escapeHTML(content).replace(/\r?\n/g, "<br>")}</p></details>`,
 });
 
-cms.registerEditorComponent({
+registerEditorComponent({
   id: "season-code",
   label: "代码块",
   fields: [
@@ -69,7 +75,7 @@ const writingTemplates = {
 };
 
 for (const [id, template] of Object.entries(writingTemplates)) {
-  cms.registerEditorComponent({
+  registerEditorComponent({
     id: `season-template-${id}`,
     label: `写作模板 · ${template.label}`,
     fields: [{
@@ -91,7 +97,7 @@ const calloutBlock = ({ kind, content }) => {
   return `<aside class="season-callout" data-kind="${type}"><strong>${calloutLabels[type]}</strong><p>${escapeHTML(content).replace(/\r?\n/g, "<br>")}</p></aside>`;
 };
 
-cms.registerEditorComponent({
+registerEditorComponent({
   id: "season-callout",
   label: "提示框",
   fields: [
@@ -104,7 +110,7 @@ cms.registerEditorComponent({
   toPreview: calloutBlock,
 });
 
-cms.registerEditorComponent({
+registerEditorComponent({
   id: "season-divider",
   label: "分隔线",
   fields: [],
@@ -158,6 +164,142 @@ function AppearancePreview({ entry, getAsset }) {
     window.h("div", { style: { maxWidth: 390 } }, previewBanner("手机横幅", 150)),
   );
 }
+
+const markdownWidget = cms.getWidget("markdown");
+const toolbarActions = [
+  ["season-bilibili", "B 站视频"],
+  ["season-spoiler", "剧透折叠"],
+  ["season-code", "代码块"],
+  ["season-callout", "提示框"],
+  ["season-divider", "分隔线"],
+];
+
+function getMarkdownBody(contents) {
+  const text = contents.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const frontmatter = text.match(/^---[ \t]*\n([\s\S]*?)\n(?:---|\.\.\.)[ \t]*(?:\n|$)/);
+  return frontmatter && /^[\w\u3400-\u9fff-]+[ \t]*:/m.test(frontmatter[1])
+    ? text.slice(frontmatter[0].length)
+    : text;
+}
+
+const WritingControl = window.createClass({
+  getInitialState() {
+    return { templates: [], action: null, values: {}, revision: 0, status: "" };
+  },
+  componentDidMount() {
+    this.loadTemplates();
+  },
+  componentWillUnmount() {
+    this.templateRequest?.abort();
+  },
+  async loadTemplates() {
+    this.templateRequest?.abort();
+    const request = new AbortController();
+    this.templateRequest = request;
+    try {
+      const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      const base = local ? "" : "https://seasonzhu.github.io";
+      const response = await fetch(`${base}/admin/writing-templates.json`, {
+        cache: "no-store",
+        signal: request.signal,
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const { templates } = await response.json();
+      this.setState({ templates: templates ?? [], status: "" });
+    } catch (error) {
+      if (error.name !== "AbortError") this.setState({ status: "写作模板暂时无法加载，请重试。" });
+    }
+  },
+  insert(text) {
+    if (!text?.trim()) {
+      this.setState({ status: "没有可插入的正文。" });
+      return;
+    }
+    const current = String(this.props.value ?? "");
+    const body = text.replace(/^\n+|\n+$/g, "");
+    this.props.onChange(current.trim() ? `${current.replace(/\n+$/, "")}\n\n${body}` : body);
+    this.setState(({ revision }) => ({ revision: revision + 1, status: "已追加到正文末尾。", action: null }));
+  },
+  async importMarkdown(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    if (!/\.(md|markdown)$/i.test(file.name)) {
+      this.setState({ status: "请选择 .md 或 .markdown 文件。" });
+      return;
+    }
+    try {
+      this.insert(getMarkdownBody(await file.text()));
+    } catch {
+      this.setState({ status: "读取文件失败，请检查文件后重试。" });
+    }
+  },
+  showAction(id) {
+    const component = editorComponents.get(id);
+    if (component.fields.length === 0) {
+      this.insert(component.toBlock({}));
+      return;
+    }
+    this.setState({
+      action: id,
+      values: Object.fromEntries(component.fields.map((field) => [field.name, field.default ?? ""])),
+      status: "",
+    });
+  },
+  renderAction() {
+    const component = editorComponents.get(this.state.action);
+    if (!component) return null;
+    const h = window.h;
+    return h("div", { className: "season-writing-fields" },
+      ...component.fields.map((field) => {
+        const props = {
+          value: this.state.values[field.name],
+          onChange: (event) => {
+            const value = event.currentTarget.value;
+            this.setState(({ values }) => ({ values: { ...values, [field.name]: value } }));
+          },
+        };
+        return h("label", { key: field.name }, field.label,
+          field.widget === "select"
+            ? h("select", props, ...field.options.map(({ value, label }) => h("option", { key: value, value }, label)))
+            : h(field.widget === "text" ? "textarea" : "input", props),
+        );
+      }),
+      h("button", { type: "button", onClick: () => {
+        const invalid = component.fields.find(({ name, pattern }) => pattern && !new RegExp(pattern[0]).test(this.state.values[name]));
+        if (invalid) this.setState({ status: invalid.pattern[1] });
+        else this.insert(component.toBlock(this.state.values));
+      } }, "插入正文"),
+      h("button", { type: "button", onClick: () => this.setState({ action: null, status: "" }) }, "取消"),
+    );
+  },
+  render() {
+    const h = window.h;
+    const { templates, revision, status } = this.state;
+    return h("div", { className: this.props.classNameWrapper },
+      h("div", { className: "season-writing-toolbar", role: "group", "aria-label": "正文快捷操作" },
+        h("div", { className: "season-writing-row" },
+          ...toolbarActions.map(([id, label]) => h("button", { key: id, type: "button", onClick: () => this.showAction(id) }, label)),
+          h("button", { type: "button", onClick: () => this.fileInput.click() }, "导入 Markdown"),
+          h("input", { type: "file", accept: ".md,.markdown,text/markdown", hidden: true,
+            ref: (element) => { this.fileInput = element; }, onChange: this.importMarkdown }),
+        ),
+        templates.length > 0 && h("div", { className: "season-writing-row" },
+          h("span", null, "写作模板"),
+          ...templates.map(({ name, body }, index) => h("button", { key: index, type: "button", onClick: () => this.insert(body) }, name)),
+        ),
+        this.renderAction(),
+        status && h("p", { role: "status" }, status),
+        status === "写作模板暂时无法加载，请重试。" &&
+          h("button", { type: "button", onClick: this.loadTemplates }, "重新加载模板"),
+      ),
+      h(markdownWidget.control, { ...this.props, key: revision }),
+    );
+  },
+});
+
+cms.registerWidget("season-writing", WritingControl, markdownWidget.preview, markdownWidget.schema);
 
 cms.registerPreviewStyle("/admin/editor-preview.css");
 cms.registerPreviewTemplate("posts", PostPreview);

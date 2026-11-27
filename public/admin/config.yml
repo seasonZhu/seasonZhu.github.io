@@ -59,7 +59,7 @@ collections:
       - { label: 标签, name: tags, widget: list, required: false }
       - { label: 封面, name: image, widget: image, required: false, default: "" }
       - { label: 草稿, name: draft, widget: boolean, default: false, hint: "开启后正式站点隐藏文章。暂存未发布稿件请使用工作流。" }
-      - { label: 正文, name: body, widget: markdown }
+      - { label: 正文, name: body, widget: season-writing }
   - name: pages
     label: 固定页面
     label_singular: 固定页
@@ -123,3 +123,16 @@ collections:
             fields:
               - { label: 名称, name: name, widget: string }
               - { label: 链接, name: url, widget: string, pattern: ['^https://[^ ]+$', '请输入 HTTPS 链接'] }
+      - file: public/admin/writing-templates.json
+        name: writing_templates
+        label: 写作模板
+        format: json
+        fields:
+          - label: 模板列表
+            name: templates
+            widget: list
+            required: false
+            summary: "{{fields.name}}"
+            fields:
+              - { label: 模板名称, name: name, widget: string }
+              - { label: Markdown 内容, name: body, widget: text }
