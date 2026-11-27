@@ -7,6 +7,15 @@
     <title>Season Blog 写作后台</title>
   </head>
   <body>
-    <script is:inline src="https://cdn.jsdelivr.net/npm/decap-cms@3.18.0/dist/decap-cms.js"></script>
+    {import.meta.env.DEV ? (
+      <script is:inline src="https://cdn.jsdelivr.net/npm/decap-cms@3.18.0/dist/decap-cms.js"></script>
+    ) : (
+      <>
+        <script is:inline>
+          window.location.replace("https://seasonzhu.netlify.app/admin/" + window.location.hash);
+        </script>
+        <p><a href="https://seasonzhu.netlify.app/admin/">打开 Season Blog 写作后台</a></p>
+      </>
+    )}
   </body>
 </html>

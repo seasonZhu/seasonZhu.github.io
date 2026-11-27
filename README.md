@@ -16,7 +16,7 @@ npx --yes pnpm@9.14.4 build
 
 文章位于 `src/content/posts/`，公开地址为 `/blog/<文件名>/`。已发布的文章应保留文件名。推送到 `main` 后，GitHub Actions 构建并发布站点。
 
-网站的 `/admin/` 由 Decap CMS 提供。线上使用 GitHub 登录，需要在 Netlify 项目配置 GitHub OAuth，回调地址为 `https://api.netlify.com/auth/done`，并在 `public/admin/config.yml` 的 `backend.site_domain` 填写 Netlify 项目主机名。OAuth 密钥在 Netlify 项目安全设置中保存。
+[线上写作后台](https://seasonzhu.netlify.app/admin/) 由 Netlify 托管，使用 GitHub 登录。GitHub Pages 的 `/admin/` 会跳转到同一个后台。文章仍写入 GitHub 仓库，经 GitHub Actions 发布。OAuth 密钥保存在 Netlify 项目的安全设置中。
 
 本地开发时，在项目根目录另开一个终端运行 `npx --yes decap-server@3.11.6`，然后打开开发地址下的 `/admin/`。本地代理会把修改写入工作区。
 
