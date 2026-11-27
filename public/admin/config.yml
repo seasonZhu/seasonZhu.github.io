@@ -2,6 +2,7 @@ backend:
   name: github
   repo: seasonZhu/seasonZhu.github.io
   branch: main
+  site_domain: seasonzhu.netlify.app
 
 local_backend: true
 locale: zh_Hans
