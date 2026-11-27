@@ -1,0 +1,143 @@
+---
+import QRCode from "qrcode";
+import { siteConfig } from "../config";
+
+interface Props {
+    title: string;
+    description: string;
+    permalink: URL;
+}
+
+const { title, description, permalink } = Astro.props;
+const qr = await QRCode.toDataURL(permalink.href, { width: 164, margin: 4 });
+---
+
+<season-post-share
+    data-title={title}
+    data-description={description}
+    data-site={siteConfig.title}
+    data-url={permalink.href}
+    data-qr={qr}
+    data-hue={siteConfig.themeColor.hue}
+>
+    <button type="button" class="btn-regular rounded-lg px-4 py-2" data-open>生成分享图</button>
+    <dialog aria-label="文章分享图">
+        <div class="share-header">
+            <h2>文章分享图</h2>
+            <form method="dialog">
+                <button type="submit" class="btn-plain rounded-lg px-3 py-1">关闭</button>
+            </form>
+        </div>
+        <img data-poster alt={`${title}的分享图，含文章二维码`} width="900" height="1200" hidden>
+        <p data-status role="status"></p>
+        <div class="share-actions">
+            <a data-download class="btn-regular rounded-lg px-3 py-2" download="season-blog-share.png" hidden>保存图片</a>
+            <button type="button" data-share class="btn-regular rounded-lg px-3 py-2" hidden>分享图片</button>
+            <button type="button" data-copy class="btn-regular rounded-lg px-3 py-2">复制链接</button>
+        </div>
+    </dialog>
+</season-post-share>
+
+<style>
+season-post-share { display: block; margin-block: 1.5rem; }
+dialog {
+    width: min(100% - 2rem, 29rem);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    padding: 1rem;
+    border-radius: 1rem;
+    color: inherit;
+    background: var(--card-bg);
+}
+dialog::backdrop { background: rgb(0 0 0 / 55%); }
+.share-header, .share-actions { display: flex; align-items: center; gap: .5rem; }
+.share-header { justify-content: space-between; margin-bottom: .75rem; }
+.share-header h2 { font-size: 1.125rem; font-weight: 700; }
+.share-actions { flex-wrap: wrap; }
+[data-poster] { width: auto; max-width: 100%; max-height: 62dvh; margin-inline: auto; border-radius: .5rem; }
+[data-status] { margin-block: .75rem; font-size: .875rem; }
+[hidden] { display: none; }
+</style>
+
+<script>
+import { createSharePoster } from "../utils/share-poster";
+
+class SeasonPostShare extends HTMLElement {
+    private imageUrl?: string;
+    private file?: File;
+    private initialized = false;
+
+    connectedCallback() {
+        if (this.initialized) return;
+        this.initialized = true;
+
+        const dialog = this.querySelector<HTMLDialogElement>("dialog")!;
+        const poster = this.querySelector<HTMLImageElement>("[data-poster]")!;
+        const download = this.querySelector<HTMLAnchorElement>("[data-download]")!;
+        const share = this.querySelector<HTMLButtonElement>("[data-share]")!;
+        const status = this.querySelector<HTMLElement>("[data-status]")!;
+        const data = this.dataset;
+
+        this.querySelector("[data-open]")!.addEventListener("click", async () => {
+            dialog.showModal();
+            poster.hidden = true;
+            download.hidden = true;
+            share.hidden = true;
+            status.textContent = "正在生成分享图…";
+            try {
+                if (!this.file) {
+                    const cover = ["#post-cover img", "#banner img"].flatMap((selector) => {
+                        const image = document.querySelector<HTMLImageElement>(selector);
+                        return image ? [image.currentSrc || image.src] : [];
+                    });
+                    const blob = await createSharePoster({
+                        title: data.title!, description: data.description!, site: data.site!,
+                        qr: data.qr!, hue: Number(data.hue), cover,
+                    });
+                    if (!this.isConnected) return;
+                    this.file = new File([blob], "season-blog-share.png", { type: "image/png" });
+                    this.imageUrl = URL.createObjectURL(this.file);
+                }
+                poster.src = this.imageUrl!;
+                download.href = this.imageUrl!;
+                poster.hidden = false;
+                download.hidden = false;
+                share.hidden = !navigator.canShare?.({ files: [this.file] });
+                status.textContent = "保存图片后，可在微信聊天或朋友圈发送。";
+            } catch {
+                status.textContent = "分享图生成失败，请重试或复制文章链接。";
+            }
+        });
+
+        share.addEventListener("click", async () => {
+            if (!this.file) return;
+            try {
+                await navigator.share({ files: [this.file], title: data.title });
+            } catch (error) {
+                if (!(error instanceof DOMException && error.name === "AbortError")) {
+                    status.textContent = "系统分享未完成，可先保存图片。";
+                }
+            }
+        });
+
+        this.querySelector("[data-copy]")!.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(data.url!);
+                status.textContent = "文章链接已复制。";
+            } catch {
+                status.textContent = data.url!;
+            }
+        });
+    }
+
+    disconnectedCallback() {
+        if (this.imageUrl) URL.revokeObjectURL(this.imageUrl);
+        this.imageUrl = undefined;
+        this.file = undefined;
+    }
+}
+
+if (!customElements.get("season-post-share")) {
+    customElements.define("season-post-share", SeasonPostShare);
+}
+</script>
