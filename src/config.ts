@@ -8,6 +8,7 @@ import type {
 import appearance from "./data/appearance.json";
 import { LinkPreset } from "./types/config";
 
+const isAmber = appearance.preset === "amber";
 const bannerPosition = appearance.bannerPosition;
 const validBannerPosition = bannerPosition === "top" || bannerPosition === "bottom"
 	? bannerPosition
@@ -18,12 +19,12 @@ export const siteConfig: SiteConfig = {
 	subtitle: "星间生活志",
 	lang: "zh_CN", // Language code, e.g. 'en', 'zh_CN', 'ja', etc.
 	themeColor: {
-		hue: appearance.preset === "amber" ? 55 : 255,
+		hue: isAmber ? 55 : 255,
 		fixed: false, // Hide the theme color picker for visitors
 	},
 	banner: {
 		enable: true,
-		src: appearance.banner?.trim() || "assets/images/season-banner.png",
+		src: appearance.banner?.trim() || (isAmber ? "/images/presets/amber.webp" : "/images/presets/starry.webp"),
 		position: validBannerPosition,
 		credit: {
 			enable: false, // Display the credit text of the banner image

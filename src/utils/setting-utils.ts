@@ -14,12 +14,13 @@ export function getDefaultHue(): number {
 }
 
 export function getHue(): number {
-	const stored = localStorage.getItem("hue");
-	return stored ? Number.parseInt(stored, 10) : getDefaultHue();
+	const defaultHue = getDefaultHue();
+	const stored = localStorage.getItem(`hue:${defaultHue}`);
+	return stored ? Number.parseInt(stored, 10) : defaultHue;
 }
 
 export function setHue(hue: number): void {
-	localStorage.setItem("hue", String(hue));
+	localStorage.setItem(`hue:${getDefaultHue()}`, String(hue));
 	const r = document.querySelector(":root") as HTMLElement;
 	if (!r) {
 		return;

@@ -73,17 +73,14 @@ function AppearancePreview({ entry, getAsset }) {
     return source.startsWith("/") ? `https://seasonzhu.github.io${source}` : source;
   };
   const avatar = imageSource("avatar");
-  const banner = imageSource("banner");
+  const banner = imageSource("banner") ||
+    `https://seasonzhu.github.io/images/presets/${amber ? "amber" : "starry"}.webp`;
   const previewBanner = (label, height) => window.h("section", { key: label },
     window.h("p", null, label),
-    banner
-      ? window.h("img", {
-          src: banner, alt: "横幅预览",
-          style: { width: "100%", height, objectFit: "cover", objectPosition: position, borderRadius: 8 },
-        })
-      : window.h("div", {
-          style: { height, display: "grid", placeItems: "center", background: "#eef0f8", borderRadius: 8 },
-        }, "默认星空车站横幅"),
+    window.h("img", {
+      src: banner, alt: "横幅预览",
+      style: { width: "100%", height, objectFit: "cover", objectPosition: position, borderRadius: 8 },
+    }),
   );
 
   return window.h("div", { style: { padding: 20, color: "#242733", fontFamily: "system-ui" } },
