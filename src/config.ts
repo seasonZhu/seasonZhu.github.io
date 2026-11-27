@@ -6,6 +6,7 @@ import type {
 	SiteConfig,
 } from "./types/config";
 import appearance from "./data/appearance.json";
+import profile from "./data/profile.json";
 import { LinkPreset } from "./types/config";
 
 const isAmber = appearance.preset === "amber";
@@ -15,8 +16,8 @@ const validBannerPosition = bannerPosition === "top" || bannerPosition === "bott
 	: "center";
 
 export const siteConfig: SiteConfig = {
-	title: "Season Blog",
-	subtitle: "星间生活志",
+	title: profile.title,
+	subtitle: profile.subtitle || "",
 	lang: "zh_CN", // Language code, e.g. 'en', 'zh_CN', 'ja', etc.
 	themeColor: {
 		hue: isAmber ? 55 : 255,
@@ -61,15 +62,14 @@ export const navBarConfig: NavBarConfig = {
 
 export const profileConfig: ProfileConfig = {
 	avatar: appearance.avatar?.trim() || "assets/images/demo-avatar.png",
-	name: "Season",
-	bio: "星间生活志 · 写代码、做饭、旅行，也聊动画和游戏。",
-	links: [
-		{
-			name: "GitHub",
-			icon: "fa6-brands:github",
-			url: "https://github.com/seasonZhu",
-		},
-	],
+	name: profile.name,
+	bio: profile.bio || "",
+	links: (profile.links ?? []).filter((link) => link.url.startsWith("https://")).map((link) => ({
+		...link,
+		icon: /^https:\/\/github\.com(?:\/|$)/i.test(link.url)
+			? "fa6-brands:github"
+			: "material-symbols:link",
+	})),
 };
 
 export const licenseConfig: LicenseConfig = {

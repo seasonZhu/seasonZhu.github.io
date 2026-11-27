@@ -1,0 +1,52 @@
+.season-post-preview {
+  max-width: 48rem;
+  margin: auto;
+  padding: 1.5rem;
+  color: #242733;
+  font: 1rem/1.75 system-ui, sans-serif;
+}
+
+.season-post-preview h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.25;
+}
+
+.season-post-meta {
+  margin: .75rem 0 1.25rem;
+  color: #626779;
+}
+
+.season-post-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: .75rem;
+}
+
+.season-post-cover {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+}
+
+.season-post-body pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border-radius: .5rem;
+  color: #edf0f8;
+  background: #242733;
+  white-space: pre-wrap;
+}
+
+.season-post-body details,
+.season-callout {
+  margin-block: 1rem;
+  padding: .75rem 1rem;
+  border-inline-start: .25rem solid #536bd1;
+  border-radius: .4rem;
+  background: #eef0fa;
+}
+
+.season-post-body summary {
+  cursor: pointer;
+}

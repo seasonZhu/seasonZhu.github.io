@@ -30,6 +30,13 @@ collections:
       - { label: 标记为草稿, field: draft, pattern: true }
     fields:
       - { label: 标题, name: title, widget: string }
+      - label: 短链接名
+        name: permalink
+        widget: string
+        required: false
+        pattern: ["^[a-z0-9]+(-[a-z0-9]+)*$", "请使用小写英文字母、数字和短横线"]
+        hint: "新文章可选填，例如 swift-notes。留空使用标题生成的地址。发布后建议保留原值。"
+      - { label: 首页置顶, name: pinned, widget: boolean, default: false, required: false }
       - { label: 摘要, name: description, widget: text }
       - label: 发布日期
         name: published
@@ -63,6 +70,8 @@ collections:
     preview_path: "pages/{{slug}}/"
     fields:
       - { label: 标题, name: title, widget: string }
+      - { label: 显示在顶部导航, name: showInNav, widget: boolean, default: true, required: false }
+      - { label: 导航排序, name: navOrder, widget: number, value_type: int, default: 0, required: false, hint: "数字越小越靠前，相同则按标题排序。" }
       - { label: 正文, name: body, widget: markdown }
   - name: protected_pages
     label: 站点页面
@@ -97,3 +106,20 @@ collections:
               - { label: 居中, value: center }
               - { label: 顶部, value: top }
               - { label: 底部, value: bottom }
+      - file: src/data/profile.json
+        name: profile
+        label: 站点资料
+        format: json
+        preview_path: "/"
+        fields:
+          - { label: 站点名称, name: title, widget: string }
+          - { label: 副标题, name: subtitle, widget: string, required: false }
+          - { label: 作者名称, name: name, widget: string }
+          - { label: 侧栏简介, name: bio, widget: text, required: false }
+          - label: 社交链接
+            name: links
+            widget: list
+            required: false
+            fields:
+              - { label: 名称, name: name, widget: string }
+              - { label: 链接, name: url, widget: string, pattern: ['^https://[^ ]+$', '请输入 HTTPS 链接'] }

@@ -121,3 +121,15 @@
     }
 
 }
+
+.custom-md .season-callout {
+    border-inline-start: .25rem solid var(--primary);
+    background: var(--btn-regular-bg);
+    margin-block: 1rem;
+    padding: .75rem 1rem;
+    border-radius: .4rem;
+}
+
+.custom-md .season-callout p {
+    margin: .25rem 0 0;
+}

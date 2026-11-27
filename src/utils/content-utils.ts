@@ -14,7 +14,16 @@ async function getRawSortedPosts() {
 		const dateB = new Date(b.data.published);
 		return dateA > dateB ? -1 : 1;
 	});
-	return sorted;
+	const usedPaths = new Map(sorted.map((post) => [post.slug, post.id]));
+	return sorted.map((post) => {
+		const slug = post.data.permalink || post.slug;
+		const owner = usedPaths.get(slug);
+		if (owner && owner !== post.id) {
+			throw new Error(`文章短链接重复：${slug}（${owner}、${post.id}）`);
+		}
+		usedPaths.set(slug, post.id);
+		return { ...post, slug, sourceSlug: post.slug };
+	});
 }
 
 export async function getSortedPosts() {

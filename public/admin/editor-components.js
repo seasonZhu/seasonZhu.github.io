@@ -40,7 +40,7 @@ cms.registerEditorComponent({
   }),
   toBlock: ({ summary, content }) =>
     `<details><summary>${escapeHTML(summary)}</summary><p>${escapeHTML(content).replace(/\r?\n/g, "<br>")}</p></details>`,
-  toPreview: ({ summary }) => `<p>剧透折叠：${escapeHTML(summary)}</p>`,
+  toPreview: ({ summary, content }) => `<details><summary>${escapeHTML(summary)}</summary><p>${escapeHTML(content).replace(/\r?\n/g, "<br>")}</p></details>`,
 });
 
 cms.registerEditorComponent({
@@ -61,19 +61,85 @@ cms.registerEditorComponent({
   toPreview: ({ code }) => `<pre><code>${escapeHTML(code)}</code></pre>`,
 });
 
+const writingTemplates = {
+  tech: { label: "技术文", headings: ["问题", "解决过程", "结果"] },
+  recipe: { label: "菜谱", headings: ["用料", "步骤", "食材替换"] },
+  travel: { label: "游记", headings: ["路线", "花费", "体验"] },
+  acg: { label: "ACG 评论", headings: ["无剧透评价", "剧透讨论"] },
+};
+
+for (const [id, template] of Object.entries(writingTemplates)) {
+  cms.registerEditorComponent({
+    id: `season-template-${id}`,
+    label: `写作模板 · ${template.label}`,
+    fields: [{
+      name: "body",
+      label: "模板正文",
+      widget: "text",
+      default: template.headings.map((heading) => `## ${heading}\n\n在这里写正文。`).join("\n\n"),
+    }],
+    pattern: new RegExp(`^<!-- season-template:${id} -->\\n([\\s\\S]*?)\\n<!-- /season-template:${id} -->$`),
+    fromBlock: ([, body]) => ({ body }),
+    toBlock: ({ body }) => `<!-- season-template:${id} -->\n\n${(body || template.headings.map((heading) => `## ${heading}`).join("\n\n")).trim()}\n\n<!-- /season-template:${id} -->`,
+    toPreview: ({ body }) => `<pre class="season-template-preview">${escapeHTML(body || template.headings.join("\n"))}</pre>`,
+  });
+}
+
+const calloutLabels = { note: "注意", tip: "小技巧", substitution: "食材替换" };
+const calloutBlock = ({ kind, content }) => {
+  const type = Object.hasOwn(calloutLabels, kind) ? kind : "note";
+  return `<aside class="season-callout" data-kind="${type}"><strong>${calloutLabels[type]}</strong><p>${escapeHTML(content).replace(/\r?\n/g, "<br>")}</p></aside>`;
+};
+
+cms.registerEditorComponent({
+  id: "season-callout",
+  label: "提示框",
+  fields: [
+    { name: "kind", label: "类型", widget: "select", default: "note", options: Object.entries(calloutLabels).map(([value, label]) => ({ value, label })) },
+    { name: "content", label: "内容", widget: "text" },
+  ],
+  pattern: /^<aside class="season-callout" data-kind="(note|tip|substitution)"><strong>[^<]*<\/strong><p>([\s\S]*?)<\/p><\/aside>$/,
+  fromBlock: ([, kind, content]) => ({ kind, content: decodeHTML(content.replaceAll("<br>", "\n")) }),
+  toBlock: calloutBlock,
+  toPreview: calloutBlock,
+});
+
+cms.registerEditorComponent({
+  id: "season-divider",
+  label: "分隔线",
+  fields: [],
+  pattern: /^<hr class="season-divider">$/,
+  fromBlock: () => ({}),
+  toBlock: () => '<hr class="season-divider">',
+  toPreview: () => "<hr>",
+});
+
+function PostPreview({ entry, widgetFor, getAsset }) {
+  const data = entry.get("data");
+  const image = resolvePreviewImage(data.get("image"), getAsset);
+  const date = data.get("published");
+
+  return window.h("article", { className: "season-post-preview" },
+    window.h("h1", null, data.get("title") || "文章标题"),
+    window.h("div", { className: "season-post-meta" }, [date, data.get("category")].filter(Boolean).join(" · ")),
+    image && window.h("img", { className: "season-post-cover", src: image, alt: "文章封面" }),
+    window.h("div", { className: "season-post-body" }, widgetFor("body")),
+  );
+}
+
+function resolvePreviewImage(value, getAsset) {
+  if (!value) return "";
+  const source = String(getAsset(value) || value);
+  return source.startsWith("/") ? `https://seasonzhu.github.io${source}` : source;
+}
+
 function AppearancePreview({ entry, getAsset }) {
   const settings = entry.get("data");
   const amber = settings.get("preset") === "amber";
   const accent = amber ? "#b85a09" : "#4b65d1";
   const position = settings.get("bannerPosition") || "center";
-  const imageSource = (name) => {
-    const value = settings.get(name);
-    if (!value) return "";
-    const source = String(getAsset(value) || value);
-    return source.startsWith("/") ? `https://seasonzhu.github.io${source}` : source;
-  };
-  const avatar = imageSource("avatar");
-  const banner = imageSource("banner") ||
+  const avatar = resolvePreviewImage(settings.get("avatar"), getAsset);
+  const banner = resolvePreviewImage(settings.get("banner"), getAsset) ||
     `https://seasonzhu.github.io/images/presets/${amber ? "amber" : "starry"}.webp`;
   const previewBanner = (label, height) => window.h("section", { key: label },
     window.h("p", null, label),
@@ -93,5 +159,7 @@ function AppearancePreview({ entry, getAsset }) {
   );
 }
 
+cms.registerPreviewStyle("/admin/editor-preview.css");
+cms.registerPreviewTemplate("posts", PostPreview);
 cms.registerPreviewTemplate("appearance", AppearancePreview);
 cms.init();

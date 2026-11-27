@@ -1,0 +1,9 @@
+{
+  "title": "Season Blog",
+  "subtitle": "星间生活志",
+  "name": "Season",
+  "bio": "星间生活志 · 写代码、做饭、旅行，也聊动画和游戏。",
+  "links": [
+    { "name": "GitHub", "url": "https://github.com/seasonZhu" }
+  ]
+}

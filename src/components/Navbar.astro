@@ -12,8 +12,9 @@ import NavMenuPanel from "./widget/NavMenuPanel.astro";
 
 const className = Astro.props.class;
 
-const pageLinks: NavBarLink[] = [...fixedPages]
-    .sort((a, b) => a.title.localeCompare(b.title, "zh-CN"))
+const pageLinks: NavBarLink[] = fixedPages
+    .filter((page) => page.showInNav)
+    .sort((a, b) => a.navOrder - b.navOrder || a.title.localeCompare(b.title, "zh-CN"))
     .map((page) => ({ name: page.title, url: `/pages/${page.slug}/` }));
 
 const links = navBarConfig.links.flatMap((item): NavBarLink[] => {
