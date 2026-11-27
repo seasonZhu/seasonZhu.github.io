@@ -10,6 +10,7 @@ const postsCollection = defineCollection({
 		permalink: z.string().regex(/^(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/).optional(),
 		description: z.string().optional().default(""),
 		image: z.string().optional().default(""),
+		imageAlt: z.string().optional().default(""),
 		tags: z.array(z.string()).optional().default([]),
 		category: z.string().optional().nullable().default(""),
 		lang: z.string().optional().default(""),

@@ -58,6 +58,7 @@ collections:
         required: false
       - { label: 标签, name: tags, widget: list, required: false }
       - { label: 封面, name: image, widget: image, required: false, default: "" }
+      - { label: 封面替代文字, name: imageAlt, widget: string, required: false, hint: "用一句话描述封面主体，例如《好吃！苏东坡》的绿色封面放在木桌上。没有封面或图片仅作装饰时可留空。" }
       - { label: 草稿, name: draft, widget: boolean, default: false, hint: "开启后正式站点隐藏文章。暂存未发布稿件请使用工作流。" }
       - { label: 正文, name: body, widget: season-writing }
   - name: pages

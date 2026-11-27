@@ -50,3 +50,21 @@
 .season-post-body summary {
   cursor: pointer;
 }
+
+.season-publish-checklist {
+  margin-bottom: 1.25rem;
+  padding: .75rem 1rem;
+  border: 1px solid #dce1ec;
+  border-radius: .5rem;
+  background: #f3f6fc;
+}
+
+.season-publish-checklist h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.season-publish-checklist ul {
+  margin: .25rem 0 0;
+  padding-left: 1.25rem;
+}

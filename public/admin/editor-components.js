@@ -120,15 +120,34 @@ registerEditorComponent({
   toPreview: () => "<hr>",
 });
 
+function PublishingChecklist({ data }) {
+  const h = window.h;
+  const hasValue = (field) => Boolean(String(data.get(field) ?? "").trim());
+  const items = [
+    { label: "摘要", message: hasValue("description") ? "已填写" : "建议用一句话概括文章" },
+    { label: "栏目", message: hasValue("category") ? "已选择" : "建议选择一个栏目" },
+    {
+      label: "封面替代文字",
+      message: !hasValue("image") ? "无封面，跳过"
+        : hasValue("imageAlt") ? "已填写" : "有封面时建议描述图片主体；装饰图可留空",
+    },
+  ];
+  return h("aside", { className: "season-publish-checklist", "aria-label": "发布前检查" },
+    h("h2", null, "发布前检查"),
+    h("ul", null, ...items.map(({ label, message }) => h("li", { key: label }, h("strong", null, label), ` · ${message}`))),
+  );
+}
+
 function PostPreview({ entry, widgetFor, getAsset }) {
   const data = entry.get("data");
   const image = resolvePreviewImage(data.get("image"), getAsset);
   const date = data.get("published");
 
   return window.h("article", { className: "season-post-preview" },
+    window.h(PublishingChecklist, { data }),
     window.h("h1", null, data.get("title") || "文章标题"),
     window.h("div", { className: "season-post-meta" }, [date, data.get("category")].filter(Boolean).join(" · ")),
-    image && window.h("img", { className: "season-post-cover", src: image, alt: "文章封面" }),
+    image && window.h("img", { className: "season-post-cover", src: image, alt: String(data.get("imageAlt") ?? "").trim() }),
     window.h("div", { className: "season-post-body" }, widgetFor("body")),
   );
 }
