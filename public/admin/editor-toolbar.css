@@ -40,3 +40,19 @@
   color: inherit;
   background: #fff;
 }
+
+.season-writing-fields .season-import-option {
+  display: flex;
+  align-items: baseline;
+}
+
+.season-book-select {
+  display: block;
+  margin-top: .4rem;
+  width: 100%;
+}
+
+.season-local-backup {
+  display: block;
+  margin-top: .5rem;
+}

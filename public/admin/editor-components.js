@@ -215,6 +215,8 @@ const PostPreview = window.createClass({
     this.previewRequest?.abort();
     this.linkRequest?.abort();
     this.linkRequest = undefined;
+    this.deploymentRequest?.abort();
+    this.deploymentRequest = undefined;
   },
   async checkLinks(links, signature) {
     this.linkRequest?.abort();
@@ -234,6 +236,42 @@ const PostPreview = window.createClass({
     window.clearTimeout(timeout);
     if (this.linkRequest === request) this.setState({ checking: false, checked: { signature, results } });
   },
+  async checkDeployment(articleUrl) {
+    this.deploymentRequest?.abort();
+    const request = new AbortController();
+    this.deploymentRequest = request;
+    const timeout = setTimeout(() => request.abort(), 8000);
+    this.setState({ deployment: { articleUrl, loading: true } });
+    const actions = "https://api.github.com/repos/seasonZhu/seasonZhu.github.io/actions/workflows/deploy.yml/runs?branch=main&per_page=1";
+    const [workflow, publicPage] = await Promise.allSettled([
+      fetch(actions, { signal: request.signal, cache: "no-store" }).then(async (response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return (await response.json()).workflow_runs?.[0];
+      }),
+      fetch(articleUrl, { method: "HEAD", signal: request.signal, cache: "no-store" }).then((response) => response.status),
+    ]);
+    clearTimeout(timeout);
+    if (this.deploymentRequest !== request) return;
+    this.setState({ deployment: {
+      articleUrl, run: workflow.value, pageStatus: publicPage.value,
+    } });
+  },
+  async copyArticleUrl(articleUrl) {
+    try {
+      await navigator.clipboard.writeText(articleUrl);
+      this.setState({ copyMessage: "已复制文章链接。" });
+    } catch {
+      const link = this.publicLink;
+      if (link) {
+        const selection = link.ownerDocument.createRange();
+        selection.selectNodeContents(link);
+        const current = link.ownerDocument.getSelection();
+        current?.removeAllRanges();
+        current?.addRange(selection);
+      }
+      this.setState({ copyMessage: "浏览器禁止自动复制，请手动复制选中的地址。" });
+    }
+  },
   render() {
     const { entry, widgetFor, getAsset } = this.props;
     const data = entry.get("data");
@@ -246,7 +284,31 @@ const PostPreview = window.createClass({
     const { localImages, internalLinks, hasNotePlaceholder } = inspectMarkdown(
       String(data.get("body") ?? ""), String(data.get("image") ?? ""), slug ? `/blog/${slug}/` : "/blog/",
     );
-    const { mode, checked, checking, site } = this.state;
+    const { mode, checked, checking, site, copyMessage } = this.state;
+    const articleUrl = slug && !data.get("draft")
+      ? `${publicBlogUrl}/blog/${slug.split("/").map(encodeURIComponent).join("/")}/` : "";
+    const deployment = this.state.deployment?.articleUrl === articleUrl ? this.state.deployment : null;
+    const run = deployment?.run;
+    const workflowUrl = "https://github.com/seasonZhu/seasonZhu.github.io/actions/workflows/deploy.yml";
+    const buildStatus = !run ? "见工作流状态徽章"
+      : run.status !== "completed" ? (run.status === "queued" ? "排队中" : "部署处理中")
+      : ({ success: "成功", failure: "失败", cancelled: "已取消" }[run.conclusion] ?? "已结束，请查看日志");
+    const pageStatus = deployment?.pageStatus;
+    const online = pageStatus >= 200 && pageStatus < 300;
+    const release = articleUrl && h("aside", { className: "season-publish-checklist", "aria-label": "文章链接与部署" },
+      h("h2", null, "文章链接与部署"),
+      h("p", { className: "season-release-url" }, h("a", { href: articleUrl, ref: (element) => { this.publicLink = element; }, target: "_blank", rel: "noopener noreferrer" }, articleUrl)),
+      h("button", { type: "button", onClick: () => this.copyArticleUrl(articleUrl) }, "复制链接"), " ",
+      h("button", { type: "button", disabled: deployment?.loading,
+        onClick: () => this.checkDeployment(articleUrl) }, deployment?.loading ? "检查中…" : "检查部署状态"), " ",
+      h("a", { href: run?.html_url || workflowUrl, target: "_blank", rel: "noopener noreferrer" }, "GitHub Actions 日志"),
+      h("p", null, h("a", { href: workflowUrl, target: "_blank", rel: "noopener noreferrer" },
+        h("img", { src: `${workflowUrl}/badge.svg?branch=main`, alt: "GitHub Actions 的 main 部署状态" }))),
+      online && h("p", null, h("a", { href: `${articleUrl}#article-share`, target: "_blank", rel: "noopener noreferrer" }, "打开文章的分享图区")),
+      deployment && !deployment.loading && h("p", { role: "status" },
+        `main 最新部署：${buildStatus}。文章地址：${online ? "已可访问" : pageStatus === 404 ? "尚未上线" : "暂时无法确认"}。`),
+      copyMessage && h("p", { role: "status" }, copyMessage),
+    );
     const signature = internalLinks.join("\n");
     const results = checked?.signature === signature ? checked.results : [];
     const warnings = results.filter(({ status }) => status === 404 || status === 410);
@@ -291,7 +353,7 @@ const PostPreview = window.createClass({
           h("div", { className: "season-post-body" }, widgetFor("body")),
         );
 
-    return h("article", { className: "season-post-preview" }, checklist, tabs, content);
+    return h("article", { className: "season-post-preview" }, checklist, release, tabs, content);
   },
 });
 
@@ -336,12 +398,103 @@ const toolbarActions = [
   ["season-divider", "分隔线"],
 ];
 
-function getMarkdownBody(contents) {
-  const text = contents.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+const fieldUpdates = new EventTarget();
+const readingYears = new EventTarget();
+let activeReadingYear = "";
+const importLabels = { title: "标题", description: "摘要", published: "发布日期", tags: "标签" };
+
+for (const [name, type] of Object.entries({
+  title: "string", description: "text", published: "datetime", tags: "list",
+  readingYear: "string", readingTitle: "string",
+})) {
+  const widget = cms.getWidget(type);
+  const Control = window.createClass({
+    getInitialState() { return { books: {}, year: activeReadingYear }; },
+    componentDidMount() {
+      fieldUpdates.addEventListener(name, this.applyValue);
+      if (name === "readingYear") this.sendYear();
+      if (name === "readingTitle") {
+        readingYears.addEventListener("change", this.changeYear);
+        this.request = new AbortController();
+        fetch(`${cmsPreviewBase}/admin/reading-books.json`, { signal: this.request.signal })
+          .then((response) => {
+            if (!response.ok) throw new Error("书单不可用");
+            return response.json();
+          })
+          .then((books) => this.setState({ books }))
+          .catch((error) => {
+            if (error.name !== "AbortError") this.setState({ unavailable: true });
+          });
+      }
+    },
+    componentDidUpdate(previous) {
+      if (name === "readingYear" && previous.value !== this.props.value) this.sendYear();
+    },
+    componentWillUnmount() {
+      fieldUpdates.removeEventListener(name, this.applyValue);
+      readingYears.removeEventListener("change", this.changeYear);
+      this.request?.abort();
+    },
+    sendYear() {
+      activeReadingYear = String(this.props.value ?? "");
+      readingYears.dispatchEvent(new CustomEvent("change", { detail: activeReadingYear }));
+    },
+    changeYear(event) { this.setState({ year: event.detail }); },
+    applyValue(event) {
+      this.props.onChange(event.detail);
+      if (name === "tags") this.setState(({ revision = 0 }) => ({ revision: revision + 1 }));
+    },
+    render() {
+      const h = window.h;
+      const input = h(widget.control, { ...this.props, key: this.state.revision });
+      if (name !== "readingTitle") return input;
+      const { books, year, unavailable } = this.state;
+      const titles = books[year] ?? [];
+      return h("div", null, input,
+        titles.length > 0 && h("select", {
+          "aria-label": "从年度书单选书", className: "season-book-select", value: "",
+          onChange: (event) => this.props.onChange(event.currentTarget.value),
+        }, h("option", { value: "" }, `从 ${year} 年书单选书`),
+        ...titles.map((title) => h("option", { key: title, value: title }, title))),
+        unavailable && h("small", null, "书单暂时无法加载，可以手动填写书名。"),
+      );
+    },
+  });
+  cms.registerWidget(`season-${name.toLowerCase()}`, Control, widget.preview, widget.schema);
+}
+
+async function readMarkdown(contents) {
+  const text = contents.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   const frontmatter = text.match(/^---[ \t]*\n([\s\S]*?)\n(?:---|\.\.\.)[ \t]*(?:\n|$)/);
-  return frontmatter && /^[\w\u3400-\u9fff-]+[ \t]*:/m.test(frontmatter[1])
-    ? text.slice(frontmatter[0].length)
-    : text;
+  if (!frontmatter || !/^[\w\u3400-\u9fff-]+[ \t]*:/m.test(frontmatter[1])) {
+    return { body: text, fields: {} };
+  }
+  const body = text.slice(frontmatter[0].length);
+  try {
+    const { parse } = await import("https://cdn.jsdelivr.net/npm/yaml@2.8.2/browser/index.js");
+    const data = parse(frontmatter[1]) ?? {};
+    const fields = {};
+    for (const name of ["title", "description"]) {
+      if (typeof data[name] === "string" && data[name].trim()) fields[name] = data[name].trim();
+    }
+    const date = data.published ?? data.date;
+    const day = typeof date === "string" && date.match(/^\d{4}-\d{2}-\d{2}(?=$|T| )/)?.[0];
+    if (day && !Number.isNaN(Date.parse(day)) && new Date(day).toISOString().slice(0, 10) === day) fields.published = day;
+    const tags = typeof data.tags === "string" ? data.tags.split(/[,，]/) : data.tags;
+    if (Array.isArray(tags)) {
+      const values = [...new Set(tags.filter((tag) => typeof tag === "string").map((tag) => tag.trim()).filter(Boolean))];
+      if (values.length) fields.tags = values;
+    }
+    return { body, fields };
+  } catch {
+    return { body, fields: {}, warning: "无法读取元数据，仍可导入正文。" };
+  }
+}
+
+function cleanNote(text) {
+  return text.replace(/\r\n?/g, "\n")
+    .replace(/<image\b[^>]*\bname\s*=[^>]*>(?:<\/image>)?|\[(?:图片|插图|image)(?:占位)?\]/gi, "")
+    .replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 const WritingControl = window.createClass({
@@ -370,6 +523,38 @@ const WritingControl = window.createClass({
       if (error.name !== "AbortError") this.setState({ status: "写作模板暂时无法加载，请重试。" });
     }
   },
+  replaceBody(body, status) {
+    this.props.onChange(body);
+    this.setState(({ revision }) => ({ revision: revision + 1, status, action: null, pending: null }));
+  },
+  openImage() {
+    const trigger = this.root.querySelector('button[title="添加组件"], button[title="Add component"]');
+    if (!trigger) {
+      this.setState({ status: "先切换到富文本模式，再插入图片。" });
+      return;
+    }
+    const pickers = () => [...this.root.querySelectorAll("button")].filter((button) =>
+      /^(选择图片|Choose an image|Choose image)$/i.test(button.textContent.trim()));
+    const previous = new Set(pickers());
+    const menuTrigger = trigger.parentElement;
+    // 在快捷按钮的点击派发结束后打开菜单，避免 Decap 将它当作外部点击关闭。
+    window.setTimeout(() => {
+      if (!this.root) return;
+      if (menuTrigger.getAttribute("aria-expanded") !== "true") menuTrigger.click();
+      requestAnimationFrame(() => {
+        const item = [...this.root?.querySelectorAll('[role="menuitem"]') ?? []]
+          .find((node) => /^(Image|图片)$/.test(node.textContent.trim()));
+        if (!item) {
+          this.setState({ status: "选图菜单未打开，请使用编辑器的「添加组件 → Image」。" });
+          return;
+        }
+        item.click();
+        requestAnimationFrame(() => {
+          if (this.root) pickers().find((button) => !previous.has(button))?.click();
+        });
+      });
+    }, 0);
+  },
   insert(text) {
     if (!text?.trim()) {
       this.setState({ status: "没有可插入的正文。" });
@@ -377,8 +562,7 @@ const WritingControl = window.createClass({
     }
     const current = String(this.props.value ?? "");
     const body = text.replace(/^\n+|\n+$/g, "");
-    this.props.onChange(current.trim() ? `${current.replace(/\n+$/, "")}\n\n${body}` : body);
-    this.setState(({ revision }) => ({ revision: revision + 1, status: "已追加到正文末尾。", action: null }));
+    this.replaceBody(current.trim() ? `${current.replace(/\n+$/, "")}\n\n${body}` : body, "已追加到正文末尾。");
   },
   async importMarkdown(event) {
     const input = event.currentTarget;
@@ -390,7 +574,8 @@ const WritingControl = window.createClass({
       return;
     }
     try {
-      this.insert(getMarkdownBody(await file.text()));
+      const pending = await readMarkdown(await file.text());
+      this.setState({ action: "import", pending, selected: {}, status: "" });
     } catch {
       this.setState({ status: "读取文件失败，请检查文件后重试。" });
     }
@@ -408,9 +593,41 @@ const WritingControl = window.createClass({
     });
   },
   renderAction() {
-    const component = editorComponents.get(this.state.action);
-    if (!component) return null;
+    const { action, pending, selected, note = "" } = this.state;
     const h = window.h;
+    const cancel = h("button", { type: "button", onClick: () => this.setState({ action: null, pending: null }) }, "取消");
+    if (action === "note") {
+      const cleaned = cleanNote(note);
+      return h("div", { className: "season-writing-fields" },
+        h("label", null, "粘贴便签", h("textarea", { rows: 5, value: note,
+          onChange: (event) => this.setState({ note: event.currentTarget.value }) })),
+        h("label", null, "整理预览", h("textarea", { rows: 5, value: cleaned, readOnly: true })),
+        h("button", { type: "button", disabled: !cleaned, onClick: () => {
+          if (!String(this.props.value ?? "").trim() || window.confirm("用整理后的便签替换当前正文？")) {
+            this.replaceBody(cleaned, "已替换正文。");
+          }
+        } }, "替换正文"), cancel);
+    }
+    if (action === "import" && pending) {
+      return h("div", { className: "season-writing-fields" },
+        h("p", null, pending.warning || "正文将追加到末尾。勾选的字段会覆盖表单中的对应值。"),
+        ...Object.entries(pending.fields).map(([name, value]) =>
+          h("label", { key: name, className: "season-import-option" },
+            h("input", { type: "checkbox", checked: Boolean(selected[name]),
+              onChange: (event) => this.setState({ selected: { ...selected, [name]: event.currentTarget.checked } }) }),
+            `${importLabels[name]}：${Array.isArray(value) ? value.join("、") : value}`)),
+        h("label", null, "正文预览", h("textarea", { rows: 4, value: pending.body, readOnly: true })),
+        h("button", { type: "button", disabled: !pending.body.trim() && !Object.values(selected).some(Boolean),
+          onClick: () => {
+            for (const [name, value] of Object.entries(pending.fields)) {
+              if (selected[name]) fieldUpdates.dispatchEvent(new CustomEvent(name, { detail: value }));
+            }
+            if (pending.body.trim()) this.insert(pending.body);
+            else this.setState({ action: null, pending: null, status: "已带入所选字段。" });
+          } }, "确认导入"), cancel);
+    }
+    const component = editorComponents.get(action);
+    if (!component) return null;
     return h("div", { className: "season-writing-fields" },
       ...component.fields.map((field) => {
         const props = {
@@ -437,9 +654,11 @@ const WritingControl = window.createClass({
   render() {
     const h = window.h;
     const { templates, revision, status } = this.state;
-    return h("div", { className: this.props.classNameWrapper },
+    return h("div", { className: this.props.classNameWrapper, ref: (element) => { this.root = element; } },
       h("div", { className: "season-writing-toolbar", role: "group", "aria-label": "正文快捷操作" },
         h("div", { className: "season-writing-row" },
+          h("button", { type: "button", onMouseDown: (event) => event.preventDefault(), onClick: this.openImage }, "插入图片"),
+          h("button", { type: "button", onClick: () => this.setState({ action: "note", status: "", note: "" }) }, "整理便签"),
           ...toolbarActions.map(([id, label]) => h("button", { key: id, type: "button", onClick: () => this.showAction(id) }, label)),
           h("button", { type: "button", onClick: () => this.fileInput.click() }, "导入 Markdown"),
           h("input", { type: "file", accept: ".md,.markdown,text/markdown", hidden: true,
@@ -449,6 +668,8 @@ const WritingControl = window.createClass({
           h("span", null, "写作模板"),
           ...templates.map(({ name, body }, index) => h("button", { key: index, type: "button", onClick: () => this.insert(body) }, name)),
         ),
+        h("small", { className: "season-local-backup" },
+          "未保存的编辑可从当前浏览器的本机备份恢复。跨设备续写请保存到工作流。"),
         this.renderAction(),
         status && h("p", { role: "status" }, status),
         status === "写作模板暂时无法加载，请重试。" &&

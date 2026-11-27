@@ -35,7 +35,7 @@ collections:
     view_filters:
       - { label: 标记为草稿, field: draft, pattern: true }
     fields:
-      - { label: 标题, name: title, widget: string }
+      - { label: 标题, name: title, widget: season-title }
       - label: 短链接名
         name: permalink
         widget: string
@@ -44,17 +44,17 @@ collections:
         hint: "新文章可选填，例如 swift-notes。留空使用标题生成的地址。发布后建议保留原值。"
       - { label: 首页置顶, name: pinned, widget: boolean, default: false, required: false }
       - { label: 快捷短文, name: quickPost, widget: boolean, default: false, required: false, hint: "适合便签短文。保存时会从正文生成空白摘要，并将未选栏目设为随笔。" }
-      - { label: 摘要, name: description, widget: text, required: false, hint: "普通文章需填写。开启快捷短文时可留空，由正文首段生成。" }
+      - { label: 摘要, name: description, widget: season-description, required: false, hint: "普通文章需填写。开启快捷短文时可留空，由正文首段生成。" }
       - label: 阅读年份
         name: readingYear
-        widget: string
+        widget: season-readingyear
         required: false
         pattern: ['^20[0-9]{2}$', '请输入四位年份，例如 2026']
         hint: "与书名一起填写后，发布时自动关联看书清单。"
-      - { label: 书名, name: readingTitle, widget: string, required: false, hint: "建议与年度书单中的写法一致。新书会自动补到对应年份。" }
+      - { label: 书名, name: readingTitle, widget: season-readingtitle, required: false, hint: "建议与年度书单中的写法一致。新书会自动补到对应年份。" }
       - label: 发布日期
         name: published
-        widget: datetime
+        widget: season-published
         default: "{{now}}"
         format: YYYY-MM-DD
         date_format: YYYY-MM-DD
@@ -71,7 +71,7 @@ collections:
         widget: select
         options: [技术, 厨房, 旅行, ACG, 随笔]
         required: false
-      - { label: 标签, name: tags, widget: list, required: false }
+      - { label: 标签, name: tags, widget: season-tags, required: false }
       - { label: 封面, name: image, widget: image, required: false, default: "" }
       - { label: 封面替代文字, name: imageAlt, widget: string, required: false, hint: "用一句话描述封面主体，例如《好吃！苏东坡》的绿色封面放在木桌上。没有封面或图片仅作装饰时可留空。" }
       - { label: 草稿, name: draft, widget: boolean, default: false, hint: "开启后正式站点隐藏文章。暂存未发布稿件请使用工作流。" }
