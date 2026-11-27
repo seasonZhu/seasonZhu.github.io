@@ -1,10 +1,10 @@
 ---
-import { getCollection } from "astro:content";
+import { fixedPages } from "../../utils/fixed-pages";
 import Markdown from "@components/misc/Markdown.astro";
 import MainGridLayout from "../../layouts/MainGridLayout.astro";
 
-const pages = (await getCollection("pages")).sort((a, b) =>
-    a.data.title.localeCompare(b.data.title, "zh-CN"),
+const pages = [...fixedPages].sort((a, b) =>
+    a.title.localeCompare(b.title, "zh-CN"),
 );
 ---
 <MainGridLayout title="固定页面" description="Season Blog 的固定页面">
@@ -14,7 +14,7 @@ const pages = (await getCollection("pages")).sort((a, b) =>
             {pages.length > 0 ? (
                 <ul>
                     {pages.map((page) => (
-                        <li><a href={`/pages/${page.slug}/`}>{page.data.title}</a></li>
+                        <li><a href={`/pages/${page.slug}/`}>{page.title}</a></li>
                     ))}
                 </ul>
             ) : <p>暂无固定页面。</p>}
