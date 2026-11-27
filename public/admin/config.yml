@@ -37,10 +37,19 @@ collections:
         pattern: ["^[a-z0-9]+(-[a-z0-9]+)*$", "请使用小写英文字母、数字和短横线"]
         hint: "新文章可选填，例如 swift-notes。留空使用标题生成的地址。发布后建议保留原值。"
       - { label: 首页置顶, name: pinned, widget: boolean, default: false, required: false }
-      - { label: 摘要, name: description, widget: text }
+      - { label: 快捷短文, name: quickPost, widget: boolean, default: false, required: false, hint: "适合便签短文。保存时会从正文生成空白摘要，并将未选栏目设为随笔。" }
+      - { label: 摘要, name: description, widget: text, required: false, hint: "普通文章需填写。开启快捷短文时可留空，由正文首段生成。" }
+      - label: 阅读年份
+        name: readingYear
+        widget: string
+        required: false
+        pattern: ['^20[0-9]{2}$', '请输入四位年份，例如 2026']
+        hint: "与书名一起填写后，发布时自动关联看书清单。"
+      - { label: 书名, name: readingTitle, widget: string, required: false, hint: "建议与年度书单中的写法一致。新书会自动补到对应年份。" }
       - label: 发布日期
         name: published
         widget: datetime
+        default: "{{now}}"
         format: YYYY-MM-DD
         date_format: YYYY-MM-DD
         time_format: false

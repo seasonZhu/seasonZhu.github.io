@@ -2,6 +2,7 @@
 
 import { fixedPages } from "../../utils/fixed-pages";
 import Markdown from "@components/misc/Markdown.astro";
+import ReadingList from "@components/ReadingList.astro";
 import MainGridLayout from "../../layouts/MainGridLayout.astro";
 
 export function getStaticPaths() {
@@ -19,7 +20,7 @@ const { Content, title } = page;
         <div class="card-base z-10 px-9 py-6 relative w-full ">
             <Markdown class="mt-2">
                 <h1>{title}</h1>
-                <Content />
+                {page.slug === "看书清单" ? <ReadingList><Content /></ReadingList> : <Content />}
             </Markdown>
         </div>
     </div>

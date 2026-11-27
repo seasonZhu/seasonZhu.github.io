@@ -1,0 +1,55 @@
+---
+import { parse } from "node-html-parser";
+import { getSortedPosts } from "../utils/content-utils";
+import { getPostUrlBySlug } from "../utils/url-utils";
+
+const headingYear = /^\s*(20\d{2})\s*年/;
+const normalizeTitle = (title: string) =>
+    title.normalize("NFKC").replace(/[《》\s，,。！!：:]/g, "").toLowerCase();
+const html = parse(await Astro.slots.render("default"));
+const posts = await getSortedPosts();
+const yearSections = new Map(
+    html.querySelectorAll("section")
+        .map((section) => [section.firstElementChild?.text.match(headingYear)?.[1], section] as const)
+        .filter(([year]) => year !== undefined),
+);
+const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const automaticLists = new Map<string, ReturnType<typeof parse>>();
+
+for (const post of posts) {
+    const year = post.data.readingYear;
+    const book = post.data.readingTitle?.trim();
+    if (!year || !book) continue;
+
+    let section = yearSections.get(year);
+    if (!section) {
+        section = parse(`<section><h2 id="${year}-年">${year} 年</h2></section>`).firstElementChild!;
+        html.appendChild(section);
+        yearSections.set(year, section);
+    }
+
+    const normalizedBook = normalizeTitle(book);
+    const item = section.querySelectorAll("li").find((candidate) => {
+        const label = candidate.text.split(" · ")[0];
+        return normalizeTitle(label) === normalizedBook ||
+            normalizeTitle(label.match(/^《([^》]+)》/)?.[1] ?? "") === normalizedBook;
+    });
+    const href = getPostUrlBySlug(post.slug);
+    const link = ` · <a href="${escape(href)}">读后感</a>`;
+
+    if (item) {
+        if (!item.querySelectorAll("a").some((anchor) => anchor.getAttribute("href") === href)) {
+            item.insertAdjacentHTML("beforeend", link);
+        }
+    } else {
+        let list = automaticLists.get(year);
+        if (!list) {
+            list = parse("<ul></ul>").firstElementChild!;
+            section.appendChild(list);
+            automaticLists.set(year, list);
+        }
+        list.insertAdjacentHTML("beforeend", `<li>《${escape(book.replace(/^《|》$/g, ""))}》${link}</li>`);
+    }
+}
+---
+<Fragment set:html={html.toString()} />

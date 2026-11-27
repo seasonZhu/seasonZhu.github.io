@@ -68,3 +68,73 @@
   margin: .25rem 0 0;
   padding-left: 1.25rem;
 }
+
+.season-preview-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: 1rem;
+}
+
+.season-preview-modes button,
+.season-publish-checklist button {
+  border: 1px solid #c6d2e9;
+  border-radius: .35rem;
+  padding: .25rem .55rem;
+  background: #fff;
+  color: #253858;
+  cursor: pointer;
+}
+
+.season-preview-modes button[aria-pressed="true"] {
+  background: #253858;
+  color: #fff;
+}
+
+.season-publish-checklist button { margin-top: .5rem; }
+.season-publish-checklist button:disabled { opacity: .55; cursor: default; }
+.season-publish-checklist p { overflow-wrap: anywhere; }
+
+.season-phone-preview {
+  width: min(100%, 390px);
+  margin-inline: auto;
+  padding: .75rem;
+  border: 1px solid #dce1ec;
+  border-radius: .75rem;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
+
+.season-poster-preview {
+  width: min(100%, 420px);
+  min-height: 32rem;
+  margin-inline: auto;
+  padding: 1.4rem;
+  border-radius: .9rem;
+  background: linear-gradient(145deg, oklch(.93 .04 var(--poster-hue, 255)), #fff);
+  box-sizing: border-box;
+}
+
+.season-poster-preview img {
+  width: 100%;
+  aspect-ratio: 760 / 382;
+  object-fit: cover;
+  display: block;
+  margin-block: .9rem 1.25rem;
+}
+
+.season-poster-preview h1,
+.season-poster-preview p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.season-poster-preview footer {
+  margin-top: 1rem;
+  padding-top: .6rem;
+  border-top: 1px solid #dce1ec;
+  font-size: .875rem;
+}
