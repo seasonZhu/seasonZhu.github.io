@@ -55,16 +55,22 @@ collections:
       - { label: 正文, name: body, widget: markdown }
   - name: pages
     label: 固定页面
+    label_singular: 固定页
+    folder: src/content/pages
+    create: true
+    delete: true
+    slug: "{{slug}}"
+    preview_path: "pages/{{slug}}/"
+    fields:
+      - { label: 标题, name: title, widget: string }
+      - { label: 正文, name: body, widget: markdown }
+  - name: protected_pages
+    label: 站点页面
+    delete: false
     files:
       - file: src/content/spec/about.md
         name: about
         label: 关于页
         preview_path: about/
-        fields:
-          - { label: 正文, name: body, widget: markdown }
-      - file: src/content/spec/watchlist.md
-        name: watchlist
-        label: 追番与游戏清单
-        preview_path: watchlist/
         fields:
           - { label: 正文, name: body, widget: markdown }

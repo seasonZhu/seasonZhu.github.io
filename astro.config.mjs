@@ -29,7 +29,7 @@ export default defineConfig({
 	site: "https://seasonzhu.github.io/",
 	base: "/",
 	trailingSlash: "always",
-	redirects: { "/blog": "/archive/" },
+	redirects: { "/blog": "/archive/", "/watchlist": "/pages/watchlist/" },
 	integrations: [
 		tailwind({
 			nesting: true,
