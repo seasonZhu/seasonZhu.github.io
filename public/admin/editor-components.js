@@ -61,4 +61,40 @@ cms.registerEditorComponent({
   toPreview: ({ code }) => `<pre><code>${escapeHTML(code)}</code></pre>`,
 });
 
+function AppearancePreview({ entry, getAsset }) {
+  const settings = entry.get("data");
+  const amber = settings.get("preset") === "amber";
+  const accent = amber ? "#b85a09" : "#4b65d1";
+  const position = settings.get("bannerPosition") || "center";
+  const imageSource = (name) => {
+    const value = settings.get(name);
+    if (!value) return "";
+    const source = String(getAsset(value) || value);
+    return source.startsWith("/") ? `https://seasonzhu.github.io${source}` : source;
+  };
+  const avatar = imageSource("avatar");
+  const banner = imageSource("banner");
+  const previewBanner = (label, height) => window.h("section", { key: label },
+    window.h("p", null, label),
+    banner
+      ? window.h("img", {
+          src: banner, alt: "横幅预览",
+          style: { width: "100%", height, objectFit: "cover", objectPosition: position, borderRadius: 8 },
+        })
+      : window.h("div", {
+          style: { height, display: "grid", placeItems: "center", background: "#eef0f8", borderRadius: 8 },
+        }, "默认星空车站横幅"),
+  );
+
+  return window.h("div", { style: { padding: 20, color: "#242733", fontFamily: "system-ui" } },
+    window.h("h2", { style: { color: accent } }, amber ? "琥珀街景" : "星间夜色"),
+    avatar
+      ? window.h("img", { src: avatar, alt: "头像预览", style: { width: 80, height: 80, objectFit: "cover", borderRadius: 12 } })
+      : window.h("p", null, "默认头像"),
+    previewBanner("桌面横幅", 180),
+    window.h("div", { style: { maxWidth: 390 } }, previewBanner("手机横幅", 150)),
+  );
+}
+
+cms.registerPreviewTemplate("appearance", AppearancePreview);
 cms.init();

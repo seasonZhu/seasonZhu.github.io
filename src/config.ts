@@ -5,20 +5,26 @@ import type {
 	ProfileConfig,
 	SiteConfig,
 } from "./types/config";
+import appearance from "./data/appearance.json";
 import { LinkPreset } from "./types/config";
+
+const bannerPosition = appearance.bannerPosition;
+const validBannerPosition = bannerPosition === "top" || bannerPosition === "bottom"
+	? bannerPosition
+	: "center";
 
 export const siteConfig: SiteConfig = {
 	title: "Season Blog",
 	subtitle: "星间生活志",
 	lang: "zh_CN", // Language code, e.g. 'en', 'zh_CN', 'ja', etc.
 	themeColor: {
-		hue: 255, // Default hue for the theme color, from 0 to 360. e.g. red: 0, teal: 200, cyan: 250, pink: 345
+		hue: appearance.preset === "amber" ? 55 : 255,
 		fixed: false, // Hide the theme color picker for visitors
 	},
 	banner: {
 		enable: true,
-		src: "assets/images/season-banner.png", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
-		position: "center", // Equivalent to object-position, only supports 'top', 'center', 'bottom'. 'center' by default
+		src: appearance.banner?.trim() || "assets/images/season-banner.png",
+		position: validBannerPosition,
 		credit: {
 			enable: false, // Display the credit text of the banner image
 			text: "", // Credit text to be displayed
@@ -53,7 +59,7 @@ export const navBarConfig: NavBarConfig = {
 };
 
 export const profileConfig: ProfileConfig = {
-	avatar: "assets/images/demo-avatar.png", // Relative to the /src directory. Relative to the /public directory if it starts with '/'
+	avatar: appearance.avatar?.trim() || "assets/images/demo-avatar.png",
 	name: "Season",
 	bio: "星间生活志 · 写代码、做饭、旅行，也聊动画和游戏。",
 	links: [

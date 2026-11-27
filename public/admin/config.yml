@@ -74,3 +74,26 @@ collections:
         preview_path: about/
         fields:
           - { label: 正文, name: body, widget: markdown }
+      - file: src/data/appearance.json
+        name: appearance
+        label: 站点外观
+        format: json
+        preview_path: "/"
+        fields:
+          - label: 配色预设
+            name: preset
+            widget: select
+            default: starry
+            options:
+              - { label: 星间夜色（蓝紫）, value: starry }
+              - { label: 琥珀街景（暖橙）, value: amber }
+          - { label: 头像, name: avatar, widget: image, required: false, hint: "上传图片或填写 HTTPS 直链。清空后恢复默认头像。" }
+          - { label: 顶部横幅, name: banner, widget: image, required: false, hint: "上传横图或填写 HTTPS 直链。清空后恢复星空车站横幅。" }
+          - label: 横幅裁剪位置
+            name: bannerPosition
+            widget: select
+            default: center
+            options:
+              - { label: 居中, value: center }
+              - { label: 顶部, value: top }
+              - { label: 底部, value: bottom }
