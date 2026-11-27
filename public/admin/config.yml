@@ -11,6 +11,12 @@ site_url: https://seasonzhu.github.io
 display_url: https://seasonzhu.github.io
 media_folder: public/images/uploads
 public_folder: /images/uploads
+media_library:
+  name: cloudinary
+  use_secure_url: true
+  config:
+    cloud_name: vcrtbcmi
+    api_key: "499371363939611"
 
 collections:
   - name: posts
